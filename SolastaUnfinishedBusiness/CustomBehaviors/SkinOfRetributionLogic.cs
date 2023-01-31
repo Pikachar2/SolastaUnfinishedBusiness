@@ -7,19 +7,21 @@ using SolastaUnfinishedBusiness.CustomInterfaces;
 using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Properties;
 using static RuleDefinitions;
+using static SolastaUnfinishedBusiness.Api.DatabaseHelper.ConditionDefinitions;
 
 namespace SolastaUnfinishedBusiness.CustomBehaviors;
 
 public class SkinOfRetributionLogic
 {
-    private const string ConditionName = "ConditionSkinOfRetribution";
-    public const int TempHpPerLevel = 5;
+    public const string NAME = "SkinOfRetribution";
+    private const string ConditionName = $"Condition{NAME}";
+    public const int TEMP_HP_PER_LEVEL = 5;
 
     private static ConditionDefinition _condition;
 
     private SkinOfRetributionLogic() { }
 
-    private static ConditionDefinition Condition => _condition ??= BuildCondition();
+    public static ConditionDefinition Condition => _condition ??= BuildCondition();
 
     private static SkinOfRetributionLogic Marker { get; } = new();
 
@@ -32,6 +34,7 @@ public class SkinOfRetributionLogic
             .SetGuiPresentation(Category.Spell, spriteReference)
             .SetCustomSubFeatures(Marker)
             .SetSilent(Silent.WhenAdded)
+            .CopyParticleReferences(ConditionBlurred)
             .SetPossessive()
             .SetFeatures(BuildFeatures())
             .AddToDB();
@@ -49,27 +52,25 @@ public class SkinOfRetributionLogic
                     .SetEffectForms(
                         EffectFormBuilder
                             .Create()
-                            .SetDamageForm(DamageTypeCold, bonusDamage: TempHpPerLevel)
+                            .SetDamageForm(DamageTypeCold, bonusDamage: TEMP_HP_PER_LEVEL)
                             .Build())
-                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, TempHpPerLevel)
+                    .SetEffectAdvancement(EffectIncrementMethod.PerAdditionalSlotLevel, TEMP_HP_PER_LEVEL)
                     .Build())
+            //.SetCustomSubFeatures(new ModifyMagicEffectSkinOfRetribution())
             .SetUniqueInstance()
             .AddToDB();
 
-        var featureSkinOfRetributionHp = FeatureDefinitionBuilder
-            .Create("FeatureSkinOfRetributionHp")
-            .SetGuiPresentationNoContent(true)
-            .SetCustomSubFeatures(SkinProvider.Mark)
-            .AddToDB();
-
         var damageSkinOfRetribution = FeatureDefinitionDamageAffinityBuilder
-            .Create("DamageAffinitySkinOfRetribution")
+            .Create($"DamageAffinity{NAME}")
             .SetGuiPresentationNoContent(true)
+            .SetGuiPresentation(NAME, Category.Spell)
             .SetDamageAffinityType(DamageAffinityType.None)
+            //.SetCustomSubFeatures(SkinProvider.Mark)
+            .SetCustomSubFeatures(SkinProvider.Mark, new ModifyMagicEffectSkinOfRetribution())
             .SetRetaliate(powerSkinOfRetribution, 1, true)
             .AddToDB();
 
-        return new[] { featureSkinOfRetributionHp, damageSkinOfRetribution };
+        return new[] { damageSkinOfRetribution };
     }
 
     private static List<RulesetCondition> GetConditions(RulesetActor character)
@@ -126,6 +127,27 @@ public class SkinOfRetributionLogic
             {
                 target.RemoveCondition(condition);
             }
+        }
+    }
+
+    private sealed class ModifyMagicEffectSkinOfRetribution : IModifyMagicEffect
+    {
+        public EffectDescription ModifyEffect(BaseDefinition definition, EffectDescription effect, RulesetCharacter character)
+        {
+            var rulesetCondition =
+                character.AllConditions.FirstOrDefault(x => x.EffectDefinitionName == "SkinOfRetribution");
+
+            if (rulesetCondition == null || !effect.HasDamageForm())
+            {
+                return effect;
+            }
+
+            var effectLevel = rulesetCondition.EffectLevel;
+            var damageForm = effect.FindFirstDamageForm();
+
+            damageForm.bonusDamage *= effectLevel;
+
+            return effect;
         }
     }
 }

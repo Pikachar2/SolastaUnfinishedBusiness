@@ -343,26 +343,14 @@ internal static partial class SpellBuilders
 
     internal static SpellDefinition BuildSkinOfRetribution()
     {
-        const string NAME = "SkinOfRetribution";
+        const string NAME = SkinOfRetributionLogic.NAME;
         
         var spriteReference = Sprites.GetSprite(NAME, Resources.SkinOfRetribution, 128);
-        const int TEMP_HP_PER_LEVEL = SkinOfRetributionLogic.TempHpPerLevel;
-
-        var conditionMark = ConditionDefinitionBuilder
-            .Create($"Condition{NAME}Mark")
-            .SetGuiPresentation(NAME, Category.Spell)
-            .SetSilent(Silent.WhenAddedOrRemoved)
-            .CopyParticleReferences(ConditionBlurred)
-            .SetFeatures(FeatureDefinitionBuilder
-                .Create($"Feature{NAME}")
-                .SetGuiPresentation(NAME, Category.Spell)
-                .SetCustomSubFeatures(SkinOfRetributionLogic.SkinProvider.Mark)
-                .AddToDB())
-            .AddToDB();
+        const int TEMP_HP_PER_LEVEL = SkinOfRetributionLogic.TEMP_HP_PER_LEVEL;
 
         var effectFormRetribution = EffectFormBuilder
             .Create()
-            .SetConditionForm(conditionMark, ConditionForm.ConditionOperation.Add, true, false)
+            .SetConditionForm(SkinOfRetributionLogic.Condition, ConditionForm.ConditionOperation.Add, true, false)
             .Build();
 
         var effectFormTemporaryHitPoints = EffectFormBuilder
