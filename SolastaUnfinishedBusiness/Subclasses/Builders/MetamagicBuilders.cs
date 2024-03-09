@@ -1,10 +1,13 @@
-using System.Linq;
+﻿using System.Linq;
+using Mono.CSharp;
 using SolastaUnfinishedBusiness.Api;
+using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Validators;
+using UnityEngine;
 using static MetricsDefinitions;
 using static RuleDefinitions;
 
@@ -15,7 +18,15 @@ internal static class MetamagicBuilders
     private const string MetamagicAltruistic = "MetamagicAltruisticSpell";
     private const string MetamagicFocused = "MetamagicFocusedSpell";
     private const string MetamagicPowerful = "MetamagicPowerfulSpell";
+    private const string MetamagicTransmuted = "MetamagicTransmutedSpell";
     private const string MetamagicWidened = "MetamagicWidenedSpell";
+
+    private static readonly string[] ELEMENTAL_DAMAGE_TYPES =
+    [
+        "DamageAcid", "DamageCold", "DamageFire", 
+        "DamageLightning", "DamagePoison", "DamageThunder"
+    ];
+
 
     #region Metamagic Altruistic
 
@@ -244,6 +255,68 @@ internal static class MetamagicBuilders
                          .Where(x => x.FormType == EffectForm.EffectFormType.Damage))
             {
                 effectForm.DamageForm.diceNumber += 1;
+            }
+
+            return effectDescription;
+        }
+    }
+
+    #endregion
+
+    #region Metamagic Transmuted
+
+    internal static MetamagicOptionDefinition BuildMetamagicTransmutedSpell()
+    {
+        var validator = new ValidateMetamagicApplication(IsMetamagicTransmutedSpellValid);
+
+        return MetamagicOptionDefinitionBuilder
+            .Create(MetamagicTransmuted)
+            .SetGuiPresentation(Category.Feature)
+            .SetCost()
+            .AddCustomSubFeatures(new ModifyEffectDescriptionMetamagicTransmuted(), validator)
+            //            .
+            .AddToDB();
+    }
+
+    private static void IsMetamagicTransmutedSpellValid(
+        RulesetCharacter caster,
+        RulesetEffectSpell rulesetEffectSpell,
+        MetamagicOptionDefinition metamagicOption,
+        ref bool result,
+        ref string failure)
+    {
+        var effect = rulesetEffectSpell.EffectDescription;
+        System.Console.WriteLine("SOMETHIGN!!~!!");
+
+        if (null != effect.FindFirstDamageFormOfType([.. ELEMENTAL_DAMAGE_TYPES]))
+        {
+            return;
+        }
+
+        failure = "Failure/&FailureFlagSpellMustHaveDamageFormElemental";
+
+        result = false;
+    }
+
+    private sealed class ModifyEffectDescriptionMetamagicTransmuted : IModifyEffectDescription
+    {
+        public bool IsValid(
+            BaseDefinition definition,
+            RulesetCharacter character,
+            EffectDescription effectDescription)
+        {
+            return true;
+        }
+
+        public EffectDescription GetEffectDescription(BaseDefinition definition, EffectDescription effectDescription,
+            RulesetCharacter character, RulesetEffect rulesetEffect)
+        {
+            foreach (var effectForm in effectDescription.EffectForms
+                         .Where(x => x.FormType == EffectForm.EffectFormType.Damage))
+            {
+                System.Console.WriteLine("DamageType before: " + effectForm.DamageForm.damageType);
+                effectForm.DamageForm.damageType = "DamageAcid";
+                System.Console.WriteLine("DamageType after: " + effectForm.DamageForm.damageType);
             }
 
             return effectDescription;
