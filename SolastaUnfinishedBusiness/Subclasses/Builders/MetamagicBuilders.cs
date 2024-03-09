@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using Mono.CSharp;
 using SolastaUnfinishedBusiness.Api;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
@@ -21,10 +22,10 @@ internal static class MetamagicBuilders
     private const string MetamagicTransmuted = "MetamagicTransmutedSpell";
     private const string MetamagicWidened = "MetamagicWidenedSpell";
 
-    private static readonly string[] ELEMENTAL_DAMAGE_TYPES =
+    private static readonly (string, string)[] ELEMENTAL_DAMAGE_TYPES =
     [
-        "DamageAcid", "DamageCold", "DamageFire", 
-        "DamageLightning", "DamagePoison", "DamageThunder"
+        ("DamageAcid", "Acid"), ("DamageCold", "Cold"), ("DamageFire", "Fire"), 
+        ("DamageLightning", "Lightning"), ("DamagePoison", "Poison"), ("DamageThunder", "Thunder")
     ];
 
 
@@ -269,13 +270,31 @@ internal static class MetamagicBuilders
     {
         var validator = new ValidateMetamagicApplication(IsMetamagicTransmutedSpellValid);
 
+        List<MetamagicOptionDefinition> transmutedItems = buildMetamagicTransmutedSpellItem(validator);
+
         return MetamagicOptionDefinitionBuilder
             .Create(MetamagicTransmuted)
             .SetGuiPresentation(Category.Feature)
-            .SetCost()
-            .AddCustomSubFeatures(new ModifyEffectDescriptionMetamagicTransmuted(), validator)
-            //            .
+            .SetCost(MetamagicCostMethod.SpellLevel)
+            .AddCustomSubFeatures(new ReplaceMetamagicOption(transmutedItems.ToArray()))
+//            .AddCustomSubFeatures(transmutedItems.ToArray()[0], transmutedItems.ToArray()[1])
             .AddToDB();
+    }
+
+    private static List<MetamagicOptionDefinition> buildMetamagicTransmutedSpellItem(ValidateMetamagicApplication validator)
+    {
+        List<MetamagicOptionDefinition> transmutedSpellList = [];
+        foreach ((string damage, string type) in ELEMENTAL_DAMAGE_TYPES) 
+        {
+            var transmutedItem = MetamagicOptionDefinitionBuilder
+                .Create($"{MetamagicTransmuted}" + type)
+                .SetGuiPresentation(Category.Feature, hidden: true)
+                .SetCost()
+                .AddCustomSubFeatures(new ModifyEffectDescriptionMetamagicTransmuted(damage), validator)
+                .AddToDB();
+            transmutedSpellList.Add(transmutedItem);
+        }
+        return transmutedSpellList;
     }
 
     private static void IsMetamagicTransmutedSpellValid(
@@ -288,9 +307,13 @@ internal static class MetamagicBuilders
         var effect = rulesetEffectSpell.EffectDescription;
         System.Console.WriteLine("SOMETHIGN!!~!!");
 
-        if (null != effect.FindFirstDamageFormOfType([.. ELEMENTAL_DAMAGE_TYPES]))
-        {
-            return;
+        List<string> dummy = ELEMENTAL_DAMAGE_TYPES.Select(x => x.Item1).ToList();
+        System.Console.WriteLine("damage Type List: " + dummy.ToString());
+
+        if (null != effect.FindFirstDamageFormOfType(dummy))
+//        if (null != effect.FindFirstDamageFormOfType([.. ELEMENTAL_DAMAGE_TYPES]))
+            {
+                return;
         }
 
         failure = "Failure/&FailureFlagSpellMustHaveDamageFormElemental";
@@ -298,8 +321,10 @@ internal static class MetamagicBuilders
         result = false;
     }
 
-    private sealed class ModifyEffectDescriptionMetamagicTransmuted : IModifyEffectDescription
+    private sealed class ModifyEffectDescriptionMetamagicTransmuted(string damageType) : IModifyEffectDescription
     {
+        private readonly string damageType = damageType;
+
         public bool IsValid(
             BaseDefinition definition,
             RulesetCharacter character,
@@ -315,7 +340,7 @@ internal static class MetamagicBuilders
                          .Where(x => x.FormType == EffectForm.EffectFormType.Damage))
             {
                 System.Console.WriteLine("DamageType before: " + effectForm.DamageForm.damageType);
-                effectForm.DamageForm.damageType = "DamageAcid";
+                effectForm.DamageForm.damageType = damageType;
                 System.Console.WriteLine("DamageType after: " + effectForm.DamageForm.damageType);
             }
 
