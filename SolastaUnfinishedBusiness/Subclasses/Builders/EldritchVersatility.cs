@@ -82,7 +82,7 @@ internal static class EldritchVersatilityBuilders
 
     public static readonly FeatDefinition FeatEldritchVersatilityAdept = FeatDefinitionBuilder
         .Create($"Feat{Name}Adept")
-        .SetGuiPresentation(Category.Feat)
+        .SetGuiPresentation(Category.Feat, hidden: true)
         .AddFeatures(Learn1Versatility)
         .AddCustomSubFeatures(new EldritchVersatilityAdeptCustom())
         .AddToDB();
@@ -587,6 +587,7 @@ internal static class EldritchVersatilityBuilders
             }
 
             public IEnumerator OnMagicEffectBeforeHitConfirmedOnEnemy(
+                GameLocationBattleManager battleManager,
                 GameLocationCharacter attacker,
                 GameLocationCharacter defender,
                 ActionModifier actionModifier,
@@ -1034,9 +1035,10 @@ internal static class EldritchVersatilityBuilders
             }
 
             var armorClass = defender.RulesetCharacter.TryGetAttributeValue(AttributeDefinitions.ArmorClass);
-            var totalAttack = attackRoll
-                              + (attackMode?.ToHitBonus ?? rulesetEffect?.MagicAttackBonus ?? 0)
-                              + actionModifier.AttackRollModifier;
+            var totalAttack =
+                attackRoll
+                + (attackMode?.ToHitBonus ?? rulesetEffect?.MagicAttackBonus ?? 0)
+                + actionModifier.AttackRollModifier;
 
             // some other reaction saved it already
             if (armorClass > totalAttack)
@@ -1098,7 +1100,7 @@ internal static class EldritchVersatilityBuilders
 
             RequestCustomReaction(actionService, "EldritchAegis", actionParams, requiredACAddition);
 
-            yield return battleManager.WaitForReactions(helper, actionService, count);
+            yield return battleManager.WaitForReactions(attacker, actionService, count);
 
             if (!actionParams.ReactionValidated)
             {
@@ -1223,7 +1225,7 @@ internal static class EldritchVersatilityBuilders
             if (gameLocationActionManager == null ||
                 helper.Side != defender.Side ||
                 !action.RolledSaveThrow ||
-                action.SaveOutcome == RollOutcome.Success ||
+                action.SaveOutcome != RollOutcome.Failure ||
                 !helper.CanReact() ||
                 !helper.CanPerceiveTarget(defender) ||
                 !helper.IsWithinRange(defender, 7))
@@ -1257,7 +1259,7 @@ internal static class EldritchVersatilityBuilders
 
             RequestCustomReaction(gameLocationActionManager, "EldritchWard", actionParams, requiredSaveAddition);
 
-            yield return battleManager.WaitForReactions(helper, gameLocationActionManager, count);
+            yield return battleManager.WaitForReactions(attacker, gameLocationActionManager, count);
 
             if (!actionParams.ReactionValidated)
             {

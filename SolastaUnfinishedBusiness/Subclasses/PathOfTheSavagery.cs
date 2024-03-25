@@ -87,7 +87,8 @@ public sealed class PathOfTheSavagery : AbstractSubclass
             .Create($"Condition{Name}UnbridledFerocity")
             .SetGuiPresentation(Category.Condition, ConditionDefinitions.ConditionSorcererChildRiftDeflection)
             .SetSilent(Silent.WhenRemoved)
-            .SetSpecialInterruptions(ConditionInterruption.RageStop)
+            // don't use vanilla RageStop with permanent conditions
+            .SetSpecialInterruptions(ExtraConditionInterruption.SourceRageStop)
             .SetPossessive()
             .AllowMultipleInstances()
             .AddFeatures(
@@ -246,8 +247,12 @@ public sealed class PathOfTheSavagery : AbstractSubclass
             var classLevel = rulesetCharacter.GetClassLevel(CharacterClassDefinitions.Barbarian);
             var temporaryHitPoints = (classLevel + 1) / 2;
 
-            rulesetCharacter.ReceiveTemporaryHitPoints(
-                temporaryHitPoints, DurationType.Minute, 1, TurnOccurenceType.EndOfTurn, rulesetCharacter.Guid);
+            if (temporaryHitPoints > rulesetCharacter.TemporaryHitPoints)
+            {
+                rulesetCharacter.ReceiveTemporaryHitPoints(
+                    temporaryHitPoints, DurationType.UntilLongRest, 0, TurnOccurenceType.StartOfTurn,
+                    rulesetCharacter.Guid);
+            }
         }
     }
 }

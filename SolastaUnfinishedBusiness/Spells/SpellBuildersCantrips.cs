@@ -565,18 +565,6 @@ internal static partial class SpellBuilders
 
     #region Acid Claws
 
-    internal static readonly ConditionDefinition AcidClawCondition = ConditionDefinitionBuilder
-        .Create("ConditionAcidClaws")
-        .SetGuiPresentation(Category.Condition, ConditionAcidSpit)
-        .SetConditionType(ConditionType.Detrimental)
-        .SetFeatures(
-            FeatureDefinitionAttributeModifierBuilder
-                .Create("AttributeModifierAcidClawsACDebuff")
-                .SetGuiPresentation("ConditionAcidClaws", Category.Condition)
-                .SetModifier(AttributeModifierOperation.Additive, AttributeDefinitions.ArmorClass, -1)
-                .AddToDB())
-        .AddToDB();
-
     internal static SpellDefinition BuildAcidClaw()
     {
         const string NAME = "AcidClaws";
@@ -604,7 +592,19 @@ internal static partial class SpellBuilders
                             .Build(),
                         EffectFormBuilder
                             .Create()
-                            .SetConditionForm(AcidClawCondition, ConditionForm.ConditionOperation.Add)
+                            .SetConditionForm(
+                                ConditionDefinitionBuilder
+                                    .Create("ConditionAcidClaws")
+                                    .SetGuiPresentation(Category.Condition, ConditionAcidSpit)
+                                    .SetConditionType(ConditionType.Detrimental)
+                                    .SetFeatures(
+                                        FeatureDefinitionAttributeModifierBuilder
+                                            .Create("AttributeModifierAcidClawsACDebuff")
+                                            .SetGuiPresentation("ConditionAcidClaws", Category.Condition)
+                                            .SetModifier(AttributeModifierOperation.Additive,
+                                                AttributeDefinitions.ArmorClass, -1)
+                                            .AddToDB())
+                                    .AddToDB(), ConditionForm.ConditionOperation.Add)
                             .Build())
                     .SetParticleEffectParameters(AcidSplash)
                     .Build())
@@ -743,13 +743,19 @@ internal static partial class SpellBuilders
             };
             var rolls = new List<int>();
             var damageRoll = rulesetAttacker.RollDamage(damageForm, 0, false, 0, 0, 1, false, false, false, rolls);
+            var applyFormsParams = new RulesetImplementationDefinitions.ApplyFormsParams
+            {
+                sourceCharacter = rulesetAttacker,
+                targetCharacter = rulesetDefender,
+                position = defender.LocationPosition
+            };
 
             EffectHelpers.StartVisualEffect(attacker, defender, Shatter);
             RulesetActor.InflictDamage(
                 damageRoll,
                 damageForm,
                 damageForm.DamageType,
-                new RulesetImplementationDefinitions.ApplyFormsParams { targetCharacter = rulesetDefender },
+                applyFormsParams,
                 rulesetDefender,
                 false,
                 rulesetAttacker.Guid,
@@ -1036,6 +1042,7 @@ internal static partial class SpellBuilders
         : IMagicEffectBeforeHitConfirmedOnEnemy
     {
         public IEnumerator OnMagicEffectBeforeHitConfirmedOnEnemy(
+            GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
             ActionModifier actionModifier,

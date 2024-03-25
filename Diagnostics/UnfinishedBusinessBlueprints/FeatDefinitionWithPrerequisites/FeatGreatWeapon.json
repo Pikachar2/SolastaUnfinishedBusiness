@@ -8,15 +8,15 @@
   "minimalAbilityScoreName": "Strength",
   "armorProficiencyPrerequisite": false,
   "armorProficiencyCategory": "",
-  "hasFamilyTag": false,
-  "familyTag": "",
+  "hasFamilyTag": true,
+  "familyTag": "FightingStyle",
   "knownFeatsPrerequisite": [],
   "features": [
     "Definition:ProficiencyFeatGreatWeapon:bb71f888-76fb-5bfb-907f-52e7c40a1940"
   ],
   "guiPresentation": {
     "$type": "GuiPresentation, Assembly-CSharp",
-    "hidden": true,
+    "hidden": false,
     "title": "FightingStyle/&GreatWeaponTitle",
     "description": "FightingStyle/&GreatWeaponDescription",
     "spriteReference": {
@@ -39,6 +39,6 @@
   },
   "contentCopyright": "UserContent",
   "guid": "96cb0fa7-ea6c-51a7-9eb6-84fc602d9501",
-  "contentPack": 9999,
+  "contentPack": "BaseGame",
   "name": "FeatGreatWeapon"
 }

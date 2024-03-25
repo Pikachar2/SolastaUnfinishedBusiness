@@ -94,7 +94,7 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
             .Create(ActionAffinitySorcererMetamagicToggle, "ActionAffinityGloomBladeToggle")
             .SetGuiPresentation(Category.Feature)
             .SetAuthorizedActions((ActionDefinitions.Id)ExtraActionId.GloomBladeToggle)
-            .AddCustomSubFeatures(new AttackBeforeHitConfirmedOnEnemyGloomBlade(conditionGloomBlade))
+            .AddCustomSubFeatures(new PhysicalAttackBeforeHitConfirmedOnEnemyGloomBlade(conditionGloomBlade))
             .AddToDB();
 
         // LEVEL 9
@@ -260,11 +260,11 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
 
     private sealed class AllowRerollDiceOnAllDamageFormsGloomBlade : IAllowRerollDiceOnAllDamageForms;
 
-    private sealed class AttackBeforeHitConfirmedOnEnemyGloomBlade(
+    private sealed class PhysicalAttackBeforeHitConfirmedOnEnemyGloomBlade(
         // ReSharper disable once SuggestBaseTypeForParameterInConstructor
-        ConditionDefinition conditionGloomBlade) : IAttackBeforeHitConfirmedOnEnemy
+        ConditionDefinition conditionGloomBlade) : IPhysicalAttackBeforeHitConfirmedOnEnemy
     {
-        public IEnumerator OnAttackBeforeHitConfirmedOnEnemy(
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnEnemy(
             GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
@@ -273,7 +273,6 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
             bool rangedAttack,
             AdvantageType advantageType,
             List<EffectForm> actualEffectForms,
-            RulesetEffect rulesetEffect,
             bool firstTarget,
             bool criticalHit)
         {
@@ -371,7 +370,7 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
     {
         public IEnumerator HandleReducedToZeroHpByEnemy(
             GameLocationCharacter attacker,
-            GameLocationCharacter source,
+            GameLocationCharacter defender,
             RulesetAttackMode attackMode,
             RulesetEffect activeEffect)
         {
@@ -385,7 +384,7 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
                 yield break;
             }
 
-            var rulesetCharacter = source.RulesetCharacter;
+            var rulesetCharacter = defender.RulesetCharacter;
 
             if (rulesetCharacter.GetRemainingPowerUses(powerUmbralSoul) == 0)
             {
@@ -396,7 +395,7 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
                 ServiceRepository.GetService<IRulesetImplementationService>() as RulesetImplementationManager;
 
             var usablePower = PowerProvider.Get(powerUmbralSoul, rulesetCharacter);
-            var reactionParams = new CharacterActionParams(source, ActionDefinitions.Id.PowerNoCost)
+            var reactionParams = new CharacterActionParams(defender, ActionDefinitions.Id.PowerNoCost)
             {
                 StringParameter = "UmbralSoul",
                 RulesetEffect = implementationManagerService
@@ -406,9 +405,9 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
 
             var count = gameLocationActionService.PendingReactionRequestGroups.Count;
 
-            gameLocationActionService.ReactToUsePower(reactionParams, "UsePower", source);
+            gameLocationActionService.ReactToUsePower(reactionParams, "UsePower", defender);
 
-            yield return gameLocationBattleService.WaitForReactions(source, gameLocationActionService, count);
+            yield return gameLocationBattleService.WaitForReactions(attacker, gameLocationActionService, count);
 
             if (!reactionParams.ReactionValidated)
             {
@@ -419,10 +418,10 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
 
             rulesetCharacter.StabilizeAndGainHitPoints(hitPoints);
 
-            EffectHelpers.StartVisualEffect(source, source, PowerDefilerMistyFormEscape,
+            EffectHelpers.StartVisualEffect(defender, defender, PowerDefilerMistyFormEscape,
                 EffectHelpers.EffectType.Caster);
             ServiceRepository.GetService<ICommandService>()?
-                .ExecuteAction(new CharacterActionParams(source, ActionDefinitions.Id.StandUp), null, true);
+                .ExecuteAction(new CharacterActionParams(defender, ActionDefinitions.Id.StandUp), null, true);
         }
     }
 
@@ -430,9 +429,16 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
     // Shadow Dance
     //
 
-    private sealed class CustomBehaviorShadowDance : IAttackBeforeHitConfirmedOnEnemy, IForceLightingState
+    private sealed class CustomBehaviorShadowDance : IPhysicalAttackBeforeHitConfirmedOnEnemy, IForceLightingState
     {
-        public IEnumerator OnAttackBeforeHitConfirmedOnEnemy(
+        public LocationDefinitions.LightingState GetLightingState(
+            GameLocationCharacter gameLocationCharacter,
+            LocationDefinitions.LightingState lightingState)
+        {
+            return LocationDefinitions.LightingState.Darkness;
+        }
+
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnEnemy(
             GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
@@ -441,7 +447,6 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
             bool rangedAttack,
             AdvantageType advantageType,
             List<EffectForm> actualEffectForms,
-            RulesetEffect rulesetEffect,
             bool firstTarget,
             bool criticalHit)
         {
@@ -465,13 +470,6 @@ public sealed class RoguishUmbralStalker : AbstractSubclass
                 0,
                 0,
                 0);
-        }
-
-        public LocationDefinitions.LightingState GetLightingState(
-            GameLocationCharacter gameLocationCharacter,
-            LocationDefinitions.LightingState lightingState)
-        {
-            return LocationDefinitions.LightingState.Darkness;
         }
     }
 }

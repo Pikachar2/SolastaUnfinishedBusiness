@@ -5,6 +5,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.Helpers;
+using SolastaUnfinishedBusiness.Api.LanguageExtensions;
 using SolastaUnfinishedBusiness.Behaviors;
 using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
@@ -16,10 +17,12 @@ using SolastaUnfinishedBusiness.Properties;
 using SolastaUnfinishedBusiness.Spells;
 using SolastaUnfinishedBusiness.Validators;
 using UnityEngine.AddressableAssets;
+using static FeatureDefinitionAttributeModifier;
 using static RuleDefinitions;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.ActionDefinitions;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionActionAffinitys;
+using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionMagicAffinitys;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionSubclassChoices;
 
 namespace SolastaUnfinishedBusiness.Subclasses;
@@ -91,16 +94,14 @@ public sealed class MartialForceKnight : AbstractSubclass
             .SetGuiPresentation(Category.Condition, ConditionDefinitions.ConditionShielded)
             .SetPossessive()
             .SetFeatures(
+                MagicAffinityConditionShielded,
                 FeatureDefinitionAttributeModifierBuilder
                     .Create($"AttributeModifier{Name}KineticBarrier")
-                    .SetGuiPresentation($"Power{Name}KineticBarrier", Category.Feature, Gui.NoLocalization)
-                    .SetModifier(
-                        FeatureDefinitionAttributeModifier.AttributeModifierOperation.AddConditionAmount,
-                        AttributeDefinitions.ArmorClass)
+                    .SetGuiPresentation($"Condition{Name}KineticBarrier", Category.Condition, Gui.NoLocalization)
+                    .SetModifier(AttributeModifierOperation.AddConditionAmount, AttributeDefinitions.ArmorClass)
                     .AddToDB())
-            .SetFixedAmount(1)
             .SetSpecialInterruptions(ConditionInterruption.AnyBattleTurnEnd)
-            .AddCustomSubFeatures(new OnConditionAddedOrRemovedKineticBarrier())
+            .SetAmountOrigin(ExtraOriginOfAmount.SourceAbilityBonus, AttributeDefinitions.Intelligence)
             .AddToDB();
 
         var powerKineticBarrier = FeatureDefinitionPowerSharedPoolBuilder
@@ -240,7 +241,7 @@ public sealed class MartialForceKnight : AbstractSubclass
 
         actionAffinityForcePoweredStrikeToggle.AddCustomSubFeatures(
             new ValidateDefinitionApplication(ValidatorsCharacter.HasAvailablePowerUsage(PowerPsionicInitiate)),
-            new AttackBeforeHitConfirmedOnEnemyForcePoweredStrike(conditionForcePoweredStrike, powerPsionicAdept));
+            new CustomBehaviorForcePoweredStrike(conditionForcePoweredStrike, powerPsionicAdept));
 
         var featureSetPsionicAdept = FeatureDefinitionFeatureSetBuilder
             .Create($"FeatureSet{Name}PsionicAdept")
@@ -603,15 +604,15 @@ public sealed class MartialForceKnight : AbstractSubclass
     // Force Powered Strike
     //
 
-    private sealed class AttackBeforeHitConfirmedOnEnemyForcePoweredStrike(
+    private sealed class CustomBehaviorForcePoweredStrike(
         // ReSharper disable once SuggestBaseTypeForParameterInConstructor
         ConditionDefinition conditionForcePoweredStrike,
-        FeatureDefinitionPower powerPsionicAdept) : IPhysicalAttackInitiatedByMe,
-        IAttackBeforeHitConfirmedOnEnemy, IPhysicalAttackFinishedByMe
+        FeatureDefinitionPower powerPsionicAdept)
+        : IPhysicalAttackInitiatedByMe, IPhysicalAttackBeforeHitConfirmedOnEnemy, IPhysicalAttackFinishedByMe
     {
         private bool _considerTriggerPsionicAdept;
 
-        public IEnumerator OnAttackBeforeHitConfirmedOnEnemy(
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnEnemy(
             GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
@@ -620,7 +621,6 @@ public sealed class MartialForceKnight : AbstractSubclass
             bool rangedAttack,
             AdvantageType advantageType,
             List<EffectForm> actualEffectForms,
-            RulesetEffect rulesetEffect,
             bool firstTarget,
             bool criticalHit)
         {
@@ -684,8 +684,7 @@ public sealed class MartialForceKnight : AbstractSubclass
                 yield break;
             }
 
-            var actingCharacter = action.ActingCharacter;
-            var rulesetCharacter = actingCharacter.RulesetCharacter;
+            var rulesetCharacter = attacker.RulesetCharacter;
 
             var levels = rulesetCharacter.GetClassLevel(CharacterClassDefinitions.Fighter);
 
@@ -698,7 +697,7 @@ public sealed class MartialForceKnight : AbstractSubclass
                 ServiceRepository.GetService<IRulesetImplementationService>() as RulesetImplementationManager;
 
             var usablePower = PowerProvider.Get(powerPsionicAdept, rulesetCharacter);
-            var actionParams = new CharacterActionParams(actingCharacter, ActionDefinitions.Id.PowerNoCost)
+            var actionParams = new CharacterActionParams(attacker, ActionDefinitions.Id.PowerNoCost)
             {
                 ActionModifiers = { new ActionModifier() },
                 StringParameter = "PsionicAdept",
@@ -713,7 +712,7 @@ public sealed class MartialForceKnight : AbstractSubclass
 
             actionManager.AddInterruptRequest(reactionRequest);
 
-            yield return battleManager.WaitForReactions(actingCharacter, actionManager, count);
+            yield return battleManager.WaitForReactions(attacker, actionManager, count);
         }
 
         public IEnumerator OnPhysicalAttackInitiatedByMe(
@@ -799,29 +798,20 @@ public sealed class MartialForceKnight : AbstractSubclass
                 yield break;
             }
 
-            var rulesetDefender = defender.RulesetCharacter;
-
-            if (rulesetDefender.HasConditionOfType(ConditionDefinitions.ConditionShielded))
-            {
-                yield break;
-            }
-
             var armorClass = defender.RulesetCharacter.TryGetAttributeValue(AttributeDefinitions.ArmorClass);
             var totalAttack =
                 attackRoll +
                 (attackMode?.ToHitBonus ?? rulesetEffect?.MagicAttackBonus ?? 0) +
                 actionModifier.AttackRollModifier;
 
-            // some other reaction saved it already
             if (armorClass > totalAttack)
             {
                 yield break;
             }
 
-            var helperIntelligence = rulesetHelper.TryGetAttributeValue(AttributeDefinitions.Intelligence);
-            var helperIntelligenceModifier = AttributeDefinitions.ComputeAbilityScoreModifier(helperIntelligence);
+            var intMod = GetIntModifier(rulesetHelper);
 
-            if (armorClass + helperIntelligenceModifier <= totalAttack)
+            if (armorClass + intMod <= totalAttack)
             {
                 yield break;
             }
@@ -834,6 +824,7 @@ public sealed class MartialForceKnight : AbstractSubclass
                 new CharacterActionParams(helper, ActionDefinitions.Id.PowerReaction)
                 {
                     StringParameter = "KineticBarrier",
+                    StringParameter2 = FormatReactionDescription(attacker, defender, helper),
                     ActionModifiers = { new ActionModifier() },
                     RulesetEffect = implementationManagerService
                         .MyInstantiateEffectPower(rulesetHelper, usablePower, false),
@@ -845,29 +836,18 @@ public sealed class MartialForceKnight : AbstractSubclass
 
             gameLocationActionManager.ReactToUsePower(actionParams, "UsePower", helper);
 
-            yield return battleManager.WaitForReactions(helper, gameLocationActionManager, count);
-        }
-    }
-
-    private sealed class OnConditionAddedOrRemovedKineticBarrier : IOnConditionAddedOrRemoved
-    {
-        public void OnConditionAdded(RulesetCharacter target, RulesetCondition rulesetCondition)
-        {
-            var caster = EffectHelpers.GetCharacterByGuid(rulesetCondition.SourceGuid);
-
-            if (caster == null)
-            {
-                return;
-            }
-
-            rulesetCondition.Amount = GetIntModifier(caster);
-
-            target.RefreshArmorClass();
+            yield return battleManager.WaitForReactions(attacker, gameLocationActionManager, count);
         }
 
-        public void OnConditionRemoved(RulesetCharacter target, RulesetCondition rulesetCondition)
+        private static string FormatReactionDescription(
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            GameLocationCharacter helper)
         {
-            // empty
+            var text = defender == helper ? "Self" : "Ally";
+
+            return $"UseKineticBarrierReactDescription{text}"
+                .Formatted(Category.Reaction, attacker.Name, defender.Name);
         }
     }
 
@@ -943,8 +923,11 @@ public sealed class MartialForceKnight : AbstractSubclass
             var intelligence = rulesetCharacter.TryGetAttributeValue(AttributeDefinitions.Intelligence);
             var intMod = AttributeDefinitions.ComputeAbilityScoreModifier(intelligence);
 
-            rulesetCharacter.ReceiveTemporaryHitPoints(
-                intMod, DurationType.Minute, 1, TurnOccurenceType.EndOfTurn, rulesetCharacter.Guid);
+            if (intMod > rulesetCharacter.TemporaryHitPoints)
+            {
+                rulesetCharacter.ReceiveTemporaryHitPoints(
+                    intMod, DurationType.UntilLongRest, 0, TurnOccurenceType.StartOfTurn, rulesetCharacter.Guid);
+            }
         }
 
         public void OnSavingThrowInitiated(

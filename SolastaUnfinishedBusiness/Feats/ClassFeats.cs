@@ -236,6 +236,14 @@ internal static class ClassFeats
     {
         const string Name = "FeatPoisoner";
 
+        // kept for backward compatibility
+        _ = FeatureDefinitionCraftingAffinityBuilder
+            .Create($"CraftingAffinity{Name}")
+            .SetGuiPresentationNoContent(true)
+            .SetAffinityGroups(0.5f, true, ToolTypeDefinitions.ThievesToolsType,
+                ToolTypeDefinitions.PoisonersKitType)
+            .AddToDB();
+
         return FeatDefinitionWithPrerequisitesBuilder
             .Create(Name)
             .SetGuiPresentation(Category.Feat)
@@ -244,22 +252,29 @@ internal static class ClassFeats
                     .Create($"ActionAffinity{Name}")
                     .SetGuiPresentationNoContent(true)
                     .AddCustomSubFeatures(new ValidateDeviceFunctionUse((_, device, _) =>
-                        device.UsableDeviceDescription.UsableDeviceTags.Contains("Poison")))
+                            device.UsableDeviceDescription.UsableDeviceTags.Contains("Poison")),
+                        new ModifyDamageResistancePoisoner())
                     .SetAuthorizedActions(ActionDefinitions.Id.UseItemBonus)
-                    .AddToDB(),
-                FeatureDefinitionCraftingAffinityBuilder
-                    .Create($"CraftingAffinity{Name}")
-                    .SetGuiPresentationNoContent(true)
-                    .SetAffinityGroups(0.5f, true, ToolTypeDefinitions.ThievesToolsType,
-                        ToolTypeDefinitions.PoisonersKitType)
                     .AddToDB(),
                 FeatureDefinitionProficiencyBuilder
                     .Create($"Proficiency{Name}")
                     .SetGuiPresentationNoContent(true)
                     .SetProficiencies(ProficiencyType.ToolOrExpertise, PoisonersKitType)
                     .AddToDB())
-            .SetValidators(ValidatorsFeat.IsRangerOrRogueLevel4)
             .AddToDB();
+    }
+
+    private sealed class ModifyDamageResistancePoisoner : IModifyDamageAffinity
+    {
+        public void ModifyDamageAffinity(RulesetActor attacker, RulesetActor defender, List<FeatureDefinition> features)
+        {
+            features.RemoveAll(x =>
+                x is IDamageAffinityProvider
+                {
+                    DamageAffinityType: DamageAffinityType.Resistance,
+                    DamageType: DamageTypePoison
+                });
+        }
     }
 
     #endregion
@@ -463,7 +478,7 @@ internal static class ClassFeats
 
             gameLocationActionService.AddInterruptRequest(reactionRequest);
 
-            yield return gameLocationBattleService.WaitForReactions(helper, gameLocationActionService, count);
+            yield return gameLocationBattleService.WaitForReactions(attacker, gameLocationActionService, count);
         }
     }
 
@@ -539,10 +554,14 @@ internal static class ClassFeats
             }
 
             var classLevel = rulesetCharacterHero.GetClassLevel(Druid);
+            var tempHitPoints = 2 * classLevel;
 
-            __instance.ReceiveTemporaryHitPoints(2 * classLevel, DurationType.Hour, classLevel / 2,
-                TurnOccurenceType.EndOfTurn,
-                TemporaryHitPointsGuid);
+            if (tempHitPoints > __instance.TemporaryHitPoints)
+            {
+                __instance.ReceiveTemporaryHitPoints(
+                    2 * classLevel, DurationType.UntilLongRest, 0, TurnOccurenceType.StartOfTurn,
+                    TemporaryHitPointsGuid);
+            }
         }
     }
 
@@ -646,10 +665,11 @@ internal static class ClassFeats
             var dieRoll = RollDie(DieType.D10, AdvantageType.None, out _, out _);
             var healingReceived = classLevel + dieRoll;
 
-            if (rulesetCharacter.TemporaryHitPoints <= healingReceived)
+            if (healingReceived > rulesetCharacter.TemporaryHitPoints)
             {
-                rulesetCharacter.ReceiveTemporaryHitPoints(healingReceived, DurationType.UntilLongRest, 0,
-                    TurnOccurenceType.EndOfTurn, rulesetCharacter.Guid);
+                rulesetCharacter.ReceiveTemporaryHitPoints(
+                    healingReceived, DurationType.UntilLongRest, 0, TurnOccurenceType.StartOfTurn,
+                    rulesetCharacter.Guid);
             }
         }
     }

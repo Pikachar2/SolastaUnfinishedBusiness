@@ -26,7 +26,7 @@ internal sealed class Merciless : AbstractFightingStyle
         .SetEffectDescription(
             EffectDescriptionBuilder
                 .Create()
-                .SetTargetingData(Side.Enemy, RangeType.Touch, 0, TargetType.Cube)
+                .SetTargetingData(Side.Enemy, RangeType.Touch, 0, TargetType.IndividualsUnique)
                 .SetDurationData(DurationType.Round, 1, TurnOccurenceType.EndOfSourceTurn)
                 .SetSavingThrowData(
                     false,
@@ -59,6 +59,7 @@ internal sealed class Merciless : AbstractFightingStyle
     internal override List<FeatureDefinitionFightingStyleChoice> FightingStyleChoice =>
     [
         CharacterContext.FightingStyleChoiceBarbarian,
+        CharacterContext.FightingStyleChoiceMonk,
         CharacterContext.FightingStyleChoiceRogue,
         FightingStyleChampionAdditional,
         FightingStyleFighter,

@@ -1394,35 +1394,14 @@ internal static class Level20SubclassesContext
     }
 
     private sealed class CustomBehaviorFinalWord :
-        IAttackBeforeHitConfirmedOnEnemy, IPhysicalAttackFinishedByMe,
+        IPhysicalAttackBeforeHitConfirmedOnEnemy, IPhysicalAttackFinishedByMe,
         IMagicEffectBeforeHitConfirmedOnEnemy, IMagicEffectFinishedByMeAny
     {
         private const string ConditionSilenced = "ConditionSilenced";
         private static GameLocationCharacter _attacker;
 
-        public IEnumerator OnAttackBeforeHitConfirmedOnEnemy(
-            GameLocationBattleManager battleManager,
-            GameLocationCharacter attacker,
-            GameLocationCharacter defender,
-            ActionModifier actionModifier,
-            RulesetAttackMode attackMode,
-            bool rangedAttack,
-            AdvantageType advantageType,
-            List<EffectForm> actualEffectForms,
-            RulesetEffect rulesetEffect,
-            bool firstTarget,
-            bool criticalHit)
-        {
-            if (attackMode == null)
-            {
-                yield break;
-            }
-
-            _attacker = attacker;
-            defender.RulesetCharacter.ConcentrationChanged += ConcentrationChanged;
-        }
-
         public IEnumerator OnMagicEffectBeforeHitConfirmedOnEnemy(
+            GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
             ActionModifier actionModifier,
@@ -1446,6 +1425,27 @@ internal static class Level20SubclassesContext
             defender.RulesetCharacter.ConcentrationChanged -= ConcentrationChanged;
 
             yield break;
+        }
+
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnEnemy(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            ActionModifier actionModifier,
+            RulesetAttackMode attackMode,
+            bool rangedAttack,
+            AdvantageType advantageType,
+            List<EffectForm> actualEffectForms,
+            bool firstTarget,
+            bool criticalHit)
+        {
+            if (attackMode == null)
+            {
+                yield break;
+            }
+
+            _attacker = attacker;
+            defender.RulesetCharacter.ConcentrationChanged += ConcentrationChanged;
         }
 
         public IEnumerator OnPhysicalAttackFinishedByMe(
@@ -1855,7 +1855,7 @@ internal static class Level20SubclassesContext
     {
         public IEnumerator HandleReducedToZeroHpByEnemy(
             GameLocationCharacter attacker,
-            GameLocationCharacter source,
+            GameLocationCharacter defender,
             RulesetAttackMode attackMode,
             RulesetEffect activeEffect)
         {
@@ -1869,7 +1869,7 @@ internal static class Level20SubclassesContext
                 yield break;
             }
 
-            var rulesetCharacter = source.RulesetCharacter;
+            var rulesetCharacter = defender.RulesetCharacter;
 
             if (rulesetCharacter == null)
             {
@@ -1880,21 +1880,21 @@ internal static class Level20SubclassesContext
                 ServiceRepository.GetService<IRulesetImplementationService>() as RulesetImplementationManager;
 
             var usablePower = PowerProvider.Get(powerPhysicalPerfection, rulesetCharacter);
-            var reactionParams = new CharacterActionParams(source, ActionDefinitions.Id.PowerNoCost)
+            var reactionParams = new CharacterActionParams(defender, ActionDefinitions.Id.PowerNoCost)
             {
                 StringParameter = "PhysicalPerfection",
                 ActionModifiers = { new ActionModifier() },
                 RulesetEffect = implementationManagerService
                     .MyInstantiateEffectPower(rulesetCharacter, usablePower, false),
                 UsablePower = usablePower,
-                TargetCharacters = { source }
+                TargetCharacters = { defender }
             };
 
             var count = gameLocationActionService.PendingReactionRequestGroups.Count;
 
-            gameLocationActionService.ReactToUsePower(reactionParams, "UsePower", source);
+            gameLocationActionService.ReactToUsePower(reactionParams, "UsePower", defender);
 
-            yield return gameLocationBattleService.WaitForReactions(source, gameLocationActionService, count);
+            yield return gameLocationBattleService.WaitForReactions(attacker, gameLocationActionService, count);
 
             if (!reactionParams.ReactionValidated)
             {
@@ -1905,7 +1905,7 @@ internal static class Level20SubclassesContext
             rulesetCharacter.StabilizeAndGainHitPoints(1);
 
             ServiceRepository.GetService<ICommandService>()
-                ?.ExecuteAction(new CharacterActionParams(source, ActionDefinitions.Id.StandUp), null, true);
+                ?.ExecuteAction(new CharacterActionParams(defender, ActionDefinitions.Id.StandUp), null, true);
         }
     }
 
@@ -2038,12 +2038,18 @@ internal static class Level20SubclassesContext
                 };
                 var rolls = new List<int>();
                 var damageRoll = rulesetAttacker.RollDamage(damageForm, 0, false, 0, 0, 1, false, false, false, rolls);
+                var applyFormsParams = new RulesetImplementationDefinitions.ApplyFormsParams
+                {
+                    sourceCharacter = rulesetAttacker,
+                    targetCharacter = rulesetTarget,
+                    position = target.LocationPosition
+                };
 
                 RulesetActor.InflictDamage(
                     damageRoll,
                     damageForm,
                     damageForm.DamageType,
-                    new RulesetImplementationDefinitions.ApplyFormsParams { targetCharacter = rulesetTarget },
+                    applyFormsParams,
                     rulesetTarget,
                     false,
                     rulesetAttacker.Guid,

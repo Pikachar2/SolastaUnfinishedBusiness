@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using JetBrains.Annotations;
+using SolastaUnfinishedBusiness.Feats;
 using SolastaUnfinishedBusiness.FightingStyles;
 using SolastaUnfinishedBusiness.Validators;
 
@@ -22,14 +23,16 @@ internal static class FightingStyleContext
         LoadStyle(new Interception());
         LoadStyle(new Lunger());
         LoadStyle(new Merciless());
-        LoadStyle(new MonkShieldExpert());
-        LoadStyle(new PolearmExpert());
         LoadStyle(new Pugilist());
         LoadStyle(new RemarkableTechnique());
         LoadStyle(new RopeItUp());
-        LoadStyle(new Sentinel());
         LoadStyle(new ShieldExpert());
         LoadStyle(new Torchbearer());
+
+        // kept for backward compatibility
+        _ = new MonkShieldExpert();
+        _ = new PolearmExpert();
+        _ = new Sentinel();
 
         // sorting
         FightingStyles = FightingStyles.OrderBy(x => x.FormatTitle()).ToHashSet();
@@ -82,16 +85,21 @@ internal static class FightingStyleContext
         }
 
         var name = fightingStyleDefinition.Name;
+        var feat = DatabaseRepository.GetDatabase<FeatDefinition>().GetElement($"Feat{name}");
 
         if (active)
         {
             Main.Settings.FightingStyleEnabled.TryAdd(name);
+            GroupFeats.FeatGroupFightingStyle.AddFeats(feat);
         }
         else
         {
             Main.Settings.FightingStyleEnabled.Remove(name);
+            GroupFeats.FeatGroupFightingStyle.RemoveFeats(feat);
         }
 
+        feat.GuiPresentation.hidden = !active;
+        GuiWrapperContext.RecacheFeats();
         UpdateStyleVisibility(fightingStyleDefinition);
     }
 

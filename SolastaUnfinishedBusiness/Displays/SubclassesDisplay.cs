@@ -33,13 +33,7 @@ internal static class SubclassesDisplay
 
         using (UI.HorizontalScope())
         {
-            var toggle = SubclassesContext.IsAllSetSelected();
-            if (UI.Toggle(Gui.Localize("ModUi/&SelectAll"), ref toggle, UI.Width(ModUi.PixelsPerColumn)))
-            {
-                SubclassesContext.SelectAllSet(toggle);
-            }
-
-            toggle = Main.Settings.DisplayKlassToggle.All(x => x.Value);
+            var toggle = Main.Settings.DisplayKlassToggle.All(x => x.Value);
             if (UI.Toggle(Gui.Localize("ModUi/&ExpandAll"), ref toggle, UI.Width(ModUi.PixelsPerColumn)))
             {
                 foreach (var key in Main.Settings.DisplayKlassToggle.Keys.ToHashSet())
@@ -47,19 +41,34 @@ internal static class SubclassesDisplay
                     Main.Settings.DisplayKlassToggle[key] = toggle;
                 }
             }
+
+            toggle = SubclassesContext.IsAllSetSelected();
+            if (UI.Toggle(Gui.Localize("ModUi/&SelectAll"), ref toggle, UI.Width(ModUi.PixelsPerColumn)))
+            {
+                SubclassesContext.SelectAllSet(toggle);
+            }
+
+            toggle = SubclassesContext.IsTabletopSetSelected();
+            if (UI.Toggle(Gui.Localize("ModUi/&SelectTabletop"), ref toggle, UI.Width(ModUi.PixelsPerColumn)))
+            {
+                SubclassesContext.SelectTabletopSet(toggle);
+            }
         }
+
+        UI.Div();
 
         foreach (var kvp in SubclassesContext.Klasses)
         {
-            var klassName = kvp.Key;
-            var klassDefinition = kvp.Value;
+            var displayName = kvp.Key;
+            var klassName = kvp.Value.Item1;
+            var klassDefinition = kvp.Value.Item2;
             var subclassListContext = SubclassesContext.KlassListContextTab[klassDefinition];
             var displayToggle = Main.Settings.DisplayKlassToggle[klassName];
             var sliderPos = Main.Settings.KlassListSliderPosition[klassName];
             var subclassEnabled = Main.Settings.KlassListSubclassEnabled[klassName];
 
             ModUi.DisplayDefinitions(
-                kvp.Key.Khaki(),
+                displayName.Khaki(),
                 subclassListContext.Switch,
                 subclassListContext.AllSubClasses,
                 subclassEnabled,

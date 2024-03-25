@@ -62,9 +62,6 @@ internal static class ValidatorsFeat
         ValidateIsClass(Rogue.FormatTitle(), 5, Rogue);
 
     internal static readonly Func<FeatDefinition, RulesetCharacterHero, (bool result, string output)>
-        IsRangerOrRogueLevel4 = ValidateIsClass($"{Ranger.FormatTitle()} | {Rogue.FormatTitle()}", 4, Ranger, Rogue);
-
-    internal static readonly Func<FeatDefinition, RulesetCharacterHero, (bool result, string output)>
         IsClericOrPaladinLevel4 =
             ValidateIsClass($"{Cleric.FormatTitle()} | {Paladin.FormatTitle()}", 4, Cleric, Paladin);
 
@@ -76,6 +73,9 @@ internal static class ValidatorsFeat
 
     internal static readonly Func<FeatDefinition, RulesetCharacterHero, (bool result, string output)> IsDragonborn =
         ValidateIsRace(Dragonborn.FormatTitle(), Dragonborn);
+
+    internal static readonly Func<FeatDefinition, RulesetCharacterHero, (bool result, string output)> IsHalfling =
+        ValidateIsRace(Halfling.FormatTitle(), Halfling, Halfling, HalflingMarsh);
 
     internal static readonly Func<FeatDefinition, RulesetCharacterHero, (bool result, string output)> IsElfOfHalfElf =
         ValidateIsRace(

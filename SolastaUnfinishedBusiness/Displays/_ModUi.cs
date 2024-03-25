@@ -4,6 +4,7 @@ using System.Linq;
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.LanguageExtensions;
 using SolastaUnfinishedBusiness.Api.ModKit;
+using SolastaUnfinishedBusiness.Models;
 using UnityModManagerNet;
 using static SolastaUnfinishedBusiness.Displays.BackgroundsAndRacesDisplay;
 using static SolastaUnfinishedBusiness.Displays.BlueprintDisplay;
@@ -22,9 +23,6 @@ using static SolastaUnfinishedBusiness.Displays.SubclassesDisplay;
 using static SolastaUnfinishedBusiness.Displays.ToolsDisplay;
 using static SolastaUnfinishedBusiness.Displays.TranslationsDisplay;
 
-#if DEBUG
-#endif
-
 namespace SolastaUnfinishedBusiness.Displays;
 
 // ReSharper disable once ClassNeverInstantiated.Global
@@ -32,6 +30,225 @@ internal static class ModUi
 {
     internal const int DontDisplayDescription = 4;
     internal const float PixelsPerColumn = 220;
+
+    internal static readonly HashSet<string> TabletopDefinitionNames =
+    [
+        "AirBlast",
+        "AuraOfPerseverance",
+        "AuraOfVitality",
+        "BanishingSmite",
+        "BindingIce",
+        "BladeWard",
+        "BlindFighting",
+        "BlindingSmite",
+        "BoomingBlade",
+        "BoomingStep",
+        "BurstOfRadiance",
+        "ChromaticOrb",
+        "CircleOfMagicalNegation",
+        "CircleOfTheCosmos",
+        "CircleOfTheNight",
+        "CloudOfDaggers",
+        "CollegeOfAudacity",
+        "CollegeOfGuts",
+        "CollegeOfLife",
+        "CollegeOfValiance",
+        "CrusadersMantle",
+        "DivineWrath",
+        "DomainSmith",
+        "EarthTremor",
+        "ElementalWeapon",
+        "EnduringSting",
+        "EnsnaringStrike",
+        "FarStep",
+        "FeatBladeMastery",
+        "FeatBlindFighting",
+        "FeatCleavingAttack",
+        "FeatDeadeye",
+        "FeatDefensiveDuelist",
+        "FeatDragonWings",
+        "FeatDualWeaponDefense",
+        "FeatEldritchAdept",
+        "FeatFellHanded",
+        "FeatGiftOfTheChromaticDragon",
+        "FeatGroupCrusher",
+        "FeatGroupElementalAdept",
+        "FeatGroupElvenAccuracy",
+        "FeatGroupFadeAway",
+        "FeatGroupFightingStyle",
+        "FeatGroupMagicInitiate",
+        "FeatGroupMediumArmor",
+        "FeatGroupPiercer",
+        "FeatGroupRevenantGreatSword",
+        "FeatGroupSecondChance",
+        "FeatGroupShadowTouched",
+        "FeatGroupSlasher",
+        "FeatGroupSpellSniper",
+        "FeatGroupSquatNimbleness",
+        "FeatGroupTelekinetic",
+        "FeatGroupTeleportation",
+        "FeatHealer",
+        "FeatHeavyArmorMaster",
+        "FeatInfernalConstitution",
+        "FeatInspiringLeader",
+        "FeatMediumArmorMaster",
+        "FeatMetamagicAdept",
+        "FeatMobile",
+        "FeatPoisoner",
+        "FeatPolearmExpert",
+        "FeatRangedExpert",
+        "FeatRemarkableTechnique",
+        "FeatSavageAttack",
+        "FeatSentinel",
+        "FeatShieldTechniques",
+        "FeatSpearMastery",
+        "FeatTacticianAdept",
+        "FeatTough",
+        "FeatWarCaster",
+        "FindFamiliar",
+        "FlameArrows",
+        "Foresight",
+        "ForestGuardian",
+        "GravitySinkhole",
+        "HeroicInfusion",
+        "HungerOfTheVoid",
+        "IceBlade",
+        "Incineration",
+        "InnovationArmor",
+        "InnovationArtillerist",
+        "InnovationWeapon",
+        "Interception",
+        "InvocationAbilitiesOfTheChainMaster",
+        "InvocationAspectOfTheMoon",
+        "InvocationBondOfTheTalisman",
+        "InvocationEldritchMind",
+        "InvocationEldritchSmite",
+        "InvocationGiftOfTheEverLivingOnes",
+        "InvocationGiftOfTheProtectors",
+        "InvocationGraspingBlast",
+        "InvocationHinderingBlast",
+        "InvocationImprovedPactWeapon",
+        "InvocationInexorableHex",
+        "InvocationPerniciousCloak",
+        "InvocationShroudOfShadow",
+        "InvocationStasis",
+        "InvocationSuperiorPactWeapon",
+        "InvocationTombOfFrost",
+        "InvocationTrickstersEscape",
+        "InvocationUltimatePactWeapon",
+        "InvocationUndyingServitude",
+        "InvocationVexingHex",
+        "LightningArrow",
+        "MagnifyGravity",
+        "MartialArcaneArcher",
+        "MartialForceKnight",
+        "MartialRoyalKnight",
+        "MartialSpellShield",
+        "MartialTactician",
+        "MassHeal",
+        "MeteorSwarmSingleTarget",
+        "MindBlank",
+        "MindSpike",
+        "MirrorImage",
+        "MysticalCloak",
+        "OathOfAncients",
+        "PathOfTheSpirits",
+        "PatronCelestial",
+        "PatronSoulBlade",
+        "PowerWordHeal",
+        "PowerWordKill",
+        "PsychicLance",
+        "PsychicWhip",
+        "PulseWave",
+        "RaceBattleborn",
+        "RaceBolgrif",
+        "RaceFairy",
+        "RaceKobold",
+        "RaceMalakh",
+        "RaceOligath",
+        "RaceDarkelf",
+        "RaceHalfElfVariant",
+        "RaceTiefling",
+        "RangerGloomStalker",
+        "RangerWildMaster",
+        "RemarkableTechnique",
+        "ResonatingStrike",
+        "ReverseGravity",
+        "RoguishSlayer",
+        "Sanctuary",
+        "SearingSmite",
+        "ShadowBlade",
+        "Shapechange",
+        "SkinOfRetribution",
+        "SorcerousDivineHeart",
+        "SpellWeb",
+        "SpikeBarrage",
+        "SpiritShroud",
+        "StaggeringSmite",
+        "SteelWhirlwind",
+        "StrikeWithTheWind",
+        "SwordStorm",
+        "Telekinesis",
+        "ThornyVines",
+        "ThunderousSmite",
+        "ThunderStrike",
+        "TimeStop",
+        "TollTheDead",
+        "VileBrew",
+        "VitalityTransfer",
+        "VoidGrasp",
+        "WayOfSilhouette",
+        "Weird",
+        "WizardBladeDancer",
+        "WizardDeadMaster",
+        "WizardGraviturgist",
+        "WrathfulSmite"
+    ];
+
+    internal static readonly HashSet<BaseDefinition> TabletopDefinitions = [];
+
+    internal static void LoadTabletopDefinitions()
+    {
+        var raceDb = DatabaseRepository.GetDatabase<CharacterRaceDefinition>();
+        var subclassDb = DatabaseRepository.GetDatabase<CharacterSubclassDefinition>();
+        var featDb = DatabaseRepository.GetDatabase<FeatDefinition>();
+        var fightingStyleDb = DatabaseRepository.GetDatabase<FightingStyleDefinition>();
+        var invocationDb = DatabaseRepository.GetDatabase<InvocationDefinition>();
+        var metamagicOptionDb = DatabaseRepository.GetDatabase<MetamagicOptionDefinition>();
+        var spellDb = DatabaseRepository.GetDatabase<SpellDefinition>();
+
+        foreach (var definitionName in TabletopDefinitionNames)
+        {
+            if (raceDb.TryGetElement(definitionName, out var race))
+            {
+                TabletopDefinitions.Add(race);
+            }
+            else if (subclassDb.TryGetElement(definitionName, out var subclass))
+            {
+                TabletopDefinitions.Add(subclass);
+            }
+            else if (featDb.TryGetElement(definitionName, out var feat))
+            {
+                TabletopDefinitions.Add(feat);
+            }
+            else if (fightingStyleDb.TryGetElement(definitionName, out var fightingStyle))
+            {
+                TabletopDefinitions.Add(fightingStyle);
+            }
+            else if (invocationDb.TryGetElement(definitionName, out var invocation))
+            {
+                TabletopDefinitions.Add(invocation);
+            }
+            else if (metamagicOptionDb.TryGetElement(definitionName, out var metamagicOption))
+            {
+                TabletopDefinitions.Add(metamagicOption);
+            }
+            else if (spellDb.TryGetElement(definitionName, out var spell))
+            {
+                TabletopDefinitions.Add(spell);
+            }
+        }
+    }
 
     internal static void DisplaySubMenu(ref int selectedPane, string title = null, params NamedAction[] actions)
     {
@@ -50,7 +267,7 @@ internal static class ModUi
         UI.SubMenu(ref selectedPane, title != null, null, actions);
     }
 
-    internal static void DisplayDefinitions<T>(
+    internal static bool DisplayDefinitions<T>(
         string label,
         Action<T, bool> switchAction,
         [NotNull] HashSet<T> registeredDefinitions,
@@ -59,14 +276,18 @@ internal static class ModUi
         ref int sliderPosition,
         bool useAlternateDescription = false,
         [CanBeNull] Action headerRendering = null,
-        [CanBeNull] Action additionalRendering = null) where T : BaseDefinition
+        [CanBeNull] Action additionalRendering = null,
+        bool displaySelectTabletop = true) where T : BaseDefinition
     {
         if (registeredDefinitions.Count == 0)
         {
-            return;
+            return false;
         }
 
         var selectAll = selectedDefinitions.Count == registeredDefinitions.Count;
+        var selectTabletop =
+            selectedDefinitions.Count == TabletopDefinitions.Intersect(registeredDefinitions).Count() &&
+            selectedDefinitions.All(TabletopDefinitionNames.Contains);
 
         UI.Label();
 
@@ -79,7 +300,7 @@ internal static class ModUi
 
         if (!displayToggle)
         {
-            return;
+            return selectTabletop;
         }
 
         UI.Label();
@@ -88,23 +309,40 @@ internal static class ModUi
 
         using (UI.HorizontalScope())
         {
-            if (additionalRendering != null)
-            {
-                additionalRendering.Invoke();
-            }
-            else if (UI.Toggle(Gui.Localize("ModUi/&SelectAll"), ref selectAll, UI.Width(PixelsPerColumn)))
-            {
-                foreach (var registeredDefinition in registeredDefinitions)
-                {
-                    switchAction.Invoke(registeredDefinition, selectAll);
-                }
-            }
-
             toggle = sliderPosition == 1;
 
             if (UI.Toggle(Gui.Localize("ModUi/&ShowDescriptions"), ref toggle, UI.Width(PixelsPerColumn)))
             {
                 sliderPosition = toggle ? 1 : 4;
+            }
+
+            if (additionalRendering != null)
+            {
+                additionalRendering.Invoke();
+            }
+            else
+            {
+                if (UI.Toggle(Gui.Localize("ModUi/&SelectAll"), ref selectAll, UI.Width(PixelsPerColumn)))
+                {
+                    foreach (var registeredDefinition in registeredDefinitions)
+                    {
+                        switchAction.Invoke(registeredDefinition, selectAll);
+                    }
+                }
+
+                if (displaySelectTabletop)
+                {
+                    if (UI.Toggle(Gui.Localize("ModUi/&SelectTabletop"), ref selectTabletop,
+                            UI.Width(PixelsPerColumn)))
+                    {
+                        foreach (var registeredDefinition in registeredDefinitions)
+                        {
+                            switchAction.Invoke(
+                                registeredDefinition,
+                                selectTabletop && TabletopDefinitions.Contains(registeredDefinition));
+                        }
+                    }
+                }
             }
         }
 
@@ -128,10 +366,24 @@ internal static class ModUi
                     {
                         var definition = registeredDefinitions.ElementAt(current);
                         var title = definition.FormatTitle();
+                        var isTabletop = TabletopDefinitions.Contains(definition);
+                        var isVanilla = definition.ContentPack != CeContentPackContext.CeContentPack;
 
                         if (flip)
                         {
                             title = title.Khaki();
+                        }
+                        else if (sliderPosition == 1)
+                        {
+                            title = title.White();
+                        }
+                        else if (isTabletop)
+                        {
+                            title = title.Color("#D89555").Bold() + " \u00a9".Grey(); // copyright symbol
+                        }
+                        else if (isVanilla)
+                        {
+                            title = title.Orange() + " \u263c".Grey(); // sun symbol
                         }
 
                         toggle = selectedDefinitions.Contains(definition.Name);
@@ -147,10 +399,7 @@ internal static class ModUi
                                 ? Gui.Localize($"ModUi/&{definition.Name}Description")
                                 : definition.FormatDescription();
 
-                            if (flip)
-                            {
-                                description = description.Khaki();
-                            }
+                            description = flip ? description.Khaki() : description.White();
 
                             UI.Label(description, UI.Width(PixelsPerColumn * 3));
 
@@ -162,6 +411,8 @@ internal static class ModUi
                 }
             }
         }
+
+        return selectTabletop;
     }
 }
 

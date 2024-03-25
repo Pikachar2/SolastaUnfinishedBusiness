@@ -631,6 +631,12 @@ public sealed class MartialArcaneArcher : AbstractSubclass
             var rolls = new List<int>();
             var damageRoll = rulesetAttacker.RollDamage(
                 damageForm, 0, criticalSuccess, 0, 0, 1, false, false, false, rolls);
+            var applyFormsParams = new RulesetImplementationDefinitions.ApplyFormsParams
+            {
+                sourceCharacter = rulesetAttacker,
+                targetCharacter = rulesetTarget,
+                position = target.LocationPosition
+            };
 
             EffectHelpers.StartVisualEffect(
                 attacker, defender, arcaneArcherData.EffectSpell, arcaneArcherData.EffectType);
@@ -638,7 +644,7 @@ public sealed class MartialArcaneArcher : AbstractSubclass
                 damageRoll,
                 damageForm,
                 damageForm.DamageType,
-                new RulesetImplementationDefinitions.ApplyFormsParams { targetCharacter = rulesetTarget },
+                applyFormsParams,
                 rulesetTarget,
                 false,
                 attacker.Guid,
@@ -810,29 +816,29 @@ public sealed class MartialArcaneArcher : AbstractSubclass
 
     // ReSharper disable once SuggestBaseTypeForParameterInConstructor
     private sealed class BattleStartedListenerEverReadyShot(FeatureDefinition featureDefinition)
-        : IInitiativeEndListener
+        : ICharacterBattleStartedListener
     {
-        public IEnumerator OnInitiativeEnded(GameLocationCharacter locationCharacter)
+        public void OnCharacterBattleStarted(GameLocationCharacter locationCharacter, bool surprise)
         {
             var character = locationCharacter.RulesetCharacter;
 
             if (character is not { IsDeadOrDyingOrUnconscious: false })
             {
-                yield break;
+                return;
             }
 
             var levels = character.GetClassLevel(CharacterClassDefinitions.Fighter);
 
             if (levels < 15)
             {
-                yield break;
+                return;
             }
 
             var usablePower = PowerProvider.Get(PowerArcaneShot, character);
 
             if (character.GetRemainingUsesOfPower(usablePower) > 0)
             {
-                yield break;
+                return;
             }
 
             character.RepayPowerUse(usablePower);

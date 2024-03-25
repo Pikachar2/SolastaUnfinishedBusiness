@@ -10,9 +10,6 @@ using UnityModManagerNet;
 
 namespace SolastaUnfinishedBusiness;
 
-//#if DEBUG
-//[EnableReloading]
-//#endif
 internal static class Main
 {
     internal static readonly string ModFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -66,17 +63,13 @@ internal static class Main
     [UsedImplicitly]
     internal static bool Load([NotNull] UnityModManager.ModEntry modEntry)
     {
+        ModEntry = modEntry;
+
         var now = DateTime.Now;
+        var assembly = Assembly.GetExecutingAssembly();
 
         try
         {
-            var assembly = Assembly.GetExecutingAssembly();
-
-            ModEntry = modEntry;
-#if DEBUG
-            modEntry.OnUnload = Unload;
-#endif
-
             Mod = new ModManager<Core, Settings>();
             Mod.Enable(modEntry, assembly);
 
@@ -109,13 +102,6 @@ internal static class Main
 
         return true;
     }
-#if DEBUG
-    private static bool Unload(UnityModManager.ModEntry modEntry)
-    {
-        Mod.Unload();
-        return true;
-    }
-#endif
 
     internal static void LoadSettingFilenames()
     {

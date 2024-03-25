@@ -30,7 +30,7 @@ internal sealed class Interception : AbstractFightingStyle
                 .SetUsesFixed(ActivationTime.NoCost)
                 .AddCustomSubFeatures(
                     ModifyPowerVisibility.Hidden,
-                    new AttackBeforeHitPossibleOnMeOrAllyInterception(
+                    new CustomBehaviorInterception(
                         ConditionDefinitionBuilder
                             .Create($"Condition{Name}")
                             .SetGuiPresentationNoContent(true)
@@ -52,30 +52,36 @@ internal sealed class Interception : AbstractFightingStyle
     internal override List<FeatureDefinitionFightingStyleChoice> FightingStyleChoice =>
     [
         CharacterContext.FightingStyleChoiceBarbarian,
+        CharacterContext.FightingStyleChoiceMonk,
+        CharacterContext.FightingStyleChoiceRogue,
         FightingStyleChampionAdditional,
         FightingStyleFighter,
         FightingStylePaladin,
         FightingStyleRanger
     ];
 
-    private sealed class AttackBeforeHitPossibleOnMeOrAllyInterception(
+    private sealed class CustomBehaviorInterception(
         // ReSharper disable once SuggestBaseTypeForParameterInConstructor
-        ConditionDefinition conditionDefinition) : IAttackBeforeHitConfirmedOnMeOrAlly
+        ConditionDefinition conditionDefinition) : IAttackBeforeHitPossibleOnMeOrAlly
     {
-        public IEnumerator OnAttackBeforeHitConfirmedOnMeOrAlly(
+        public IEnumerator OnAttackBeforeHitPossibleOnMeOrAlly(
             GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
             GameLocationCharacter helper,
             ActionModifier actionModifier,
             RulesetAttackMode attackMode,
-            bool rangedAttack,
-            AdvantageType advantageType,
-            List<EffectForm> actualEffectForms,
             RulesetEffect rulesetEffect,
-            bool firstTarget,
-            bool criticalHit)
+            int attackRoll)
         {
+            var gameLocationActionManager =
+                ServiceRepository.GetService<IGameLocationActionService>() as GameLocationActionManager;
+
+            if (battleManager is not { IsBattleInProgress: true } || gameLocationActionManager == null)
+            {
+                yield break;
+            }
+
             if (helper == defender ||
                 !helper.CanReact() ||
                 !helper.CanPerceiveTarget(defender) ||
@@ -92,14 +98,6 @@ internal sealed class Interception : AbstractFightingStyle
                 yield break;
             }
 
-            var gameLocationActionManager =
-                ServiceRepository.GetService<IGameLocationActionService>() as GameLocationActionManager;
-
-            if (gameLocationActionManager == null)
-            {
-                yield break;
-            }
-
             var reactionParams =
                 new CharacterActionParams(helper, (ActionDefinitions.Id)ExtraActionId.DoNothingReaction)
                 {
@@ -112,7 +110,7 @@ internal sealed class Interception : AbstractFightingStyle
 
             gameLocationActionManager.AddInterruptRequest(reactionRequest);
 
-            yield return battleManager.WaitForReactions(helper, gameLocationActionManager, count);
+            yield return battleManager.WaitForReactions(attacker, gameLocationActionManager, count);
 
             if (!reactionParams.ReactionValidated)
             {

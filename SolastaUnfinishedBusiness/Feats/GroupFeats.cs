@@ -15,7 +15,10 @@ internal static class GroupFeats
     internal const string Piercer = "Piercer";
     internal const string Crusher = "Crusher";
     internal const string OldTactics = "OldTactics";
+    internal const string FightingStyle = "FightingStyle";
     private static readonly List<FeatDefinition> Groups = [];
+
+    internal static FeatDefinition FeatGroupFightingStyle { get; } = MakeGroup("FeatGroupFightingStyle", FightingStyle);
 
     internal static FeatDefinition FeatGroupAgilityCombat { get; } = MakeGroup("FeatGroupAgilityCombat", null,
         EagerForBattle,
@@ -36,13 +39,9 @@ internal static class GroupFeats
         IcyTouch,
         MeltingTouch);
 
-    internal static FeatDefinition FeatGroupFightingStyle { get; } = MakeGroup("FeatGroupFightingStyle", null);
-
-    internal static FeatDefinition FeatGroupGeneralAdept { get; } = MakeGroup("FeatGroupGeneralAdept",
-        null,
-        FeatGroupFightingStyle);
-
     internal static FeatDefinition FeatGroupPiercer { get; } = MakeGroup("FeatGroupPiercer", Piercer);
+
+    internal static FeatDefinition FeatGroupMeleeCombat { get; } = MakeGroup("FeatGroupMeleeCombat", null);
 
     internal static FeatDefinition FeatGroupRangedCombat { get; } = MakeGroup("FeatGroupRangedCombat", null,
         FeatGroupPiercer,
@@ -205,5 +204,12 @@ internal static class GroupFeats
         var groupedFeat = groupDefinition.GetFirstSubFeatureOfType<GroupedFeat>();
 
         groupedFeat?.AddFeats(feats);
+    }
+
+    internal static void RemoveFeats(this FeatDefinition groupDefinition, params FeatDefinition[] feats)
+    {
+        var groupedFeat = groupDefinition.GetFirstSubFeatureOfType<GroupedFeat>();
+
+        groupedFeat?.RemoveFeats(feats);
     }
 }

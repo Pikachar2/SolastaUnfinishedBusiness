@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using JetBrains.Annotations;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
 using SolastaUnfinishedBusiness.Api.LanguageExtensions;
@@ -240,7 +239,7 @@ public sealed class CollegeOfAudacity : AbstractSubclass
         FeatureDefinitionPower powerSlashingWhirl,
         // ReSharper disable once SuggestBaseTypeForParameterInConstructor
         FeatureDefinitionPower powerMobileWhirl)
-        : IActionFinishedByMe, IAttackBeforeHitConfirmedOnEnemy, IPhysicalAttackFinishedByMe
+        : IActionFinishedByMe, IPhysicalAttackBeforeHitConfirmedOnEnemy, IPhysicalAttackFinishedByMe
     {
         private readonly List<string> _tags = [];
         private bool _criticalHit;
@@ -349,8 +348,7 @@ public sealed class CollegeOfAudacity : AbstractSubclass
             // apply damage to targets
             var isFirstTarget = true;
 
-            foreach (var rulesetDefender in
-                     targetCharacters.Select(targetCharacter => targetCharacter.RulesetCharacter))
+            foreach (var defender in targetCharacters)
             {
                 if (isFirstTarget)
                 {
@@ -364,11 +362,19 @@ public sealed class CollegeOfAudacity : AbstractSubclass
                         rulesetCharacter.RollDamage(damageForm, 0, _criticalHit, 0, 0, 1, false, false, false, rolls);
                 }
 
+                var rulesetDefender = defender.RulesetActor;
+                var applyFormsParams = new RulesetImplementationDefinitions.ApplyFormsParams
+                {
+                    sourceCharacter = rulesetCharacter,
+                    targetCharacter = rulesetDefender,
+                    position = defender.LocationPosition
+                };
+
                 RulesetActor.InflictDamage(
                     damageRoll,
                     damageForm,
                     _damageType,
-                    new RulesetImplementationDefinitions.ApplyFormsParams { targetCharacter = rulesetDefender },
+                    applyFormsParams,
                     rulesetDefender,
                     false,
                     rulesetCharacter.Guid,
@@ -391,7 +397,7 @@ public sealed class CollegeOfAudacity : AbstractSubclass
         }
 
         // collect damage type
-        public IEnumerator OnAttackBeforeHitConfirmedOnEnemy(
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnEnemy(
             GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
@@ -400,22 +406,16 @@ public sealed class CollegeOfAudacity : AbstractSubclass
             bool rangedAttack,
             AdvantageType advantageType,
             List<EffectForm> actualEffectForms,
-            RulesetEffect rulesetEffect,
             bool firstTarget,
             bool criticalHit)
         {
-            if (rulesetEffect != null)
-            {
-                _damageType = null;
-
-                yield break;
-            }
-
             var damageForm = attackMode.EffectDescription.FindFirstDamageForm();
 
             _damageType = damageForm?.damageType;
             _criticalHit = criticalHit;
             _tags.SetRange(attackMode.AttackTags);
+
+            yield break;
         }
 
         // add extra movement on any attack

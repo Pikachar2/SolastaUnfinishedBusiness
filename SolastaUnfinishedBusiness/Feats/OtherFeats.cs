@@ -10,6 +10,7 @@ using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
 using SolastaUnfinishedBusiness.Classes;
 using SolastaUnfinishedBusiness.CustomUI;
+using SolastaUnfinishedBusiness.FightingStyles;
 using SolastaUnfinishedBusiness.Interfaces;
 using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Properties;
@@ -24,6 +25,7 @@ using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionAttri
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionCastSpells;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionFeatureSets;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionPowers;
+using static SolastaUnfinishedBusiness.Api.DatabaseHelper.SpellDefinitions;
 
 namespace SolastaUnfinishedBusiness.Feats;
 
@@ -40,58 +42,66 @@ internal static class OtherFeats
         var featArcaneArcherAdept = BuildArcaneArcherAdept();
         var featAstralArms = BuildAstralArms();
         var featEldritchAdept = BuildEldritchAdept();
+        var featFightingInitiate = BuildFightingInitiate();
         var featFrostAdaptation = BuildFrostAdaptation();
+        var featGiftOfTheChromaticDragon = BuildGiftOfTheChromaticDragon();
         var featHealer = BuildHealer();
         var featInfusionAdept = BuildInfusionsAdept();
         var featInspiringLeader = BuildInspiringLeader();
+        var featMagicInitiate = BuildMagicInitiate();
+        var featMartialAdept = BuildTacticianAdept();
         var featMetamagicAdept = BuildMetamagicAdept();
         var featMobile = BuildMobile();
         var featMonkInitiate = BuildMonkInitiate();
         var featPickPocket = BuildPickPocket();
         var featPoisonousSkin = BuildPoisonousSkin();
-        var featTacticianAdept = BuildTacticianAdept();
         var featTough = BuildTough();
+        var featVersatilityAdept = EldritchVersatilityBuilders.FeatEldritchVersatilityAdept;
         var featWarCaster = BuildWarcaster();
-        // Static build elsewhere for convenience
-        var featEldritchVersatilityAdept = EldritchVersatilityBuilders.FeatEldritchVersatilityAdept;
+
         var spellSniperGroup = BuildSpellSniper(feats);
         var elementalAdeptGroup = BuildElementalAdept(feats);
         var elementalMasterGroup = BuildElementalMaster(feats);
 
-        BuildMagicInitiate(feats);
+        // building this way to keep backward compatibility
+        var featMonkShieldExpert = BuildFeatFromFightingStyle(MonkShieldExpert.ShieldExpertName);
+        var featPolearmExpert = BuildFeatFromFightingStyle(PolearmExpert.PolearmExpertName);
+        var featSentinel = BuildFeatFromFightingStyle(Sentinel.SentinelName);
 
         feats.AddRange(
             featArcaneArcherAdept,
             featAstralArms,
             featEldritchAdept,
-            featEldritchVersatilityAdept,
             featFrostAdaptation,
+            featGiftOfTheChromaticDragon,
             featHealer,
             featInfusionAdept,
             featInspiringLeader,
+            featMagicInitiate,
+            featMartialAdept,
             featMetamagicAdept,
+            featMonkShieldExpert,
             featMobile,
             featMonkInitiate,
             featPickPocket,
             featPoisonousSkin,
-            featTacticianAdept,
+            featPolearmExpert,
+            featSentinel,
             featTough,
+            featVersatilityAdept,
             featWarCaster);
-
-        GroupFeats.FeatGroupUnarmoredCombat.AddFeats(
-            featAstralArms,
-            featMonkInitiate,
-            featPoisonousSkin);
-
-        GroupFeats.FeatGroupSupportCombat.AddFeats(
-            featHealer,
-            featInspiringLeader);
-
-        GroupFeats.FeatGroupRangedCombat.AddFeats(
-            featArcaneArcherAdept);
 
         GroupFeats.FeatGroupAgilityCombat.AddFeats(
             featMobile);
+
+        GroupFeats.FeatGroupDefenseCombat.AddFeats(
+            featMonkShieldExpert);
+
+        GroupFeats.FeatGroupMeleeCombat.AddFeats(
+            featPolearmExpert);
+
+        GroupFeats.FeatGroupTwoHandedCombat.AddFeats(
+            featPolearmExpert);
 
         GroupFeats.FeatGroupSpellCombat.AddFeats(
             elementalAdeptGroup,
@@ -99,14 +109,16 @@ internal static class OtherFeats
             featWarCaster,
             spellSniperGroup);
 
-        GroupFeats.FeatGroupGeneralAdept.AddFeats(
-            featArcaneArcherAdept,
-            featEldritchAdept,
-            featInfusionAdept,
-            featMetamagicAdept,
-            featTacticianAdept,
-            featEldritchVersatilityAdept
-        );
+        GroupFeats.FeatGroupSupportCombat.AddFeats(
+            featGiftOfTheChromaticDragon,
+            featHealer,
+            featInspiringLeader,
+            featSentinel);
+
+        GroupFeats.FeatGroupUnarmoredCombat.AddFeats(
+            featAstralArms,
+            featMonkInitiate,
+            featPoisonousSkin);
 
         GroupFeats.MakeGroup("FeatGroupBodyResilience", null,
             FeatDefinitions.BadlandsMarauder,
@@ -118,6 +130,16 @@ internal static class OtherFeats
             FeatDefinitions.Robust,
             featTough,
             featFrostAdaptation);
+
+        GroupFeats.MakeGroup("FeatGroupGeneralAdept", null,
+            featArcaneArcherAdept,
+            featEldritchAdept,
+            featFightingInitiate,
+            featInfusionAdept,
+            featMagicInitiate,
+            featMartialAdept,
+            featMetamagicAdept,
+            featVersatilityAdept);
 
         GroupFeats.MakeGroup("FeatGroupSkills", null,
             FeatDefinitions.ArcaneAppraiser,
@@ -132,7 +154,7 @@ internal static class OtherFeats
     {
         return FeatDefinitionWithPrerequisitesBuilder
             .Create("FeatArcaneArcherAdept")
-            .SetGuiPresentation(Category.Feat)
+            .SetGuiPresentation(Category.Feat, hidden: true)
             .SetFeatures(
                 MartialArcaneArcher.PowerArcaneShot,
                 MartialArcaneArcher.InvocationPoolArcaneShotChoice2,
@@ -190,7 +212,7 @@ internal static class OtherFeats
     {
         return FeatDefinitionWithPrerequisitesBuilder
             .Create("FeatTacticianAdept")
-            .SetGuiPresentation(Category.Feat)
+            .SetGuiPresentation(Category.Feat, hidden: true)
             .SetFeatures(
                 GambitsBuilders.GambitPool,
                 GambitsBuilders.Learn2Gambit,
@@ -207,7 +229,7 @@ internal static class OtherFeats
     {
         return FeatDefinitionWithPrerequisitesBuilder
             .Create("FeatInfusionsAdept")
-            .SetGuiPresentation(Category.Feat)
+            .SetGuiPresentation(Category.Feat, hidden: true)
             .SetFeatures(
                 InventorClass.InfusionPool,
                 InventorClass.BuildLearn(2, "FeatInfusionsAdept"),
@@ -231,8 +253,8 @@ internal static class OtherFeats
             .SetEffectDescription(
                 EffectDescriptionBuilder
                     .Create()
+                    .SetDurationData(DurationType.UntilLongRest)
                     .SetTargetingData(Side.Ally, RangeType.Self, 0, TargetType.Sphere, 6)
-                    .SetDurationData(DurationType.Permanent)
                     .SetEffectForms(
                         EffectFormBuilder
                             .Create()
@@ -241,7 +263,7 @@ internal static class OtherFeats
                             .SetBonusMode(AddBonusMode.AbilityBonus)
                             .Build())
                     .SetEffectAdvancement(EffectIncrementMethod.None)
-                    .SetParticleEffectParameters(SpellDefinitions.MagicWeapon)
+                    .SetParticleEffectParameters(MagicWeapon)
                     .Build())
             .AddToDB();
 
@@ -257,7 +279,7 @@ internal static class OtherFeats
 
     #region Magic Initiate
 
-    private static void BuildMagicInitiate([NotNull] List<FeatDefinition> feats)
+    private static FeatDefinition BuildMagicInitiate()
     {
         const string NAME = "FeatMagicInitiate";
 
@@ -319,9 +341,7 @@ internal static class OtherFeats
             magicInitiateFeats.Add(featMagicInitiate);
         }
 
-        GroupFeats.MakeGroup("FeatGroupMagicInitiate", NAME, magicInitiateFeats);
-
-        feats.AddRange(magicInitiateFeats);
+        return GroupFeats.MakeGroup("FeatGroupMagicInitiate", NAME, magicInitiateFeats);
     }
 
     #endregion
@@ -460,6 +480,234 @@ internal static class OtherFeats
 
     #endregion
 
+    #region Gift of the Chromatic Dragon
+
+    private static FeatDefinition BuildGiftOfTheChromaticDragon()
+    {
+        const string Name = "GiftOfTheChromaticDragon";
+
+        (string, IMagicEffect)[] damagesAndEffects =
+        [
+            (DamageTypeAcid, AcidSplash),
+            (DamageTypeCold, ConeOfCold),
+            (DamageTypeFire, FireBolt),
+            (DamageTypeLightning, LightningBolt),
+            (DamageTypePoison, PoisonSpray)
+        ];
+
+        var dbDamageAffinities = DatabaseRepository.GetDatabase<FeatureDefinitionDamageAffinity>();
+
+        // Chromatic Infusion
+
+        var powersChromaticInfusion = new List<FeatureDefinitionPower>();
+        var powerChromaticInfusion = FeatureDefinitionPowerBuilder
+            .Create($"Power{Name}ChromaticInfusion")
+            .SetGuiPresentation(Category.Feature, PowerDomainElementalLightningBlade)
+            .SetUsesFixed(ActivationTime.BonusAction, RechargeRate.LongRest)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetTargetingData(Side.Ally, RangeType.Touch, 0, TargetType.Item,
+                        itemSelectionType: ActionDefinitions.ItemSelectionType.Weapon)
+                    .SetDurationData(DurationType.Minute, 1)
+                    .Build())
+            .AddToDB();
+
+        // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator
+        foreach (var (damageType, magicEffect) in damagesAndEffects)
+        {
+            var damageTitle = Gui.Localize($"Rules/&{damageType}Title");
+            var title = "PowerGiftOfTheChromaticDragonDamageTitle".Formatted(Category.Feature, damageTitle);
+            var description = "PowerGiftOfTheChromaticDragonDamageDescription".Formatted(Category.Feature, damageTitle);
+
+            var power = FeatureDefinitionPowerSharedPoolBuilder
+                .Create($"Power{Name}{damageType}")
+                .SetGuiPresentation(title, description)
+                .SetSharedPool(ActivationTime.BonusAction, powerChromaticInfusion)
+                .SetEffectDescription(EffectDescriptionBuilder.Create()
+                    .SetTargetingData(Side.Ally, RangeType.Touch, 0, TargetType.Item,
+                        itemSelectionType: ActionDefinitions.ItemSelectionType.Weapon)
+                    .SetDurationData(DurationType.Minute, 1)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetItemPropertyForm(
+                                ItemPropertyUsage.Unlimited, 0,
+                                new FeatureUnlockByLevel(
+                                    FeatureDefinitionAdditionalDamageBuilder
+                                        .Create($"AttackModifier{Name}{damageType}")
+                                        .SetGuiPresentation(title, description,
+                                            ConditionDefinitions.ConditionBrandingSmite)
+                                        .SetNotificationTag($"ChromaticInfusion{damageType}")
+                                        .SetDamageDice(DieType.D4, 1)
+                                        .SetSpecificDamageType(damageType)
+                                        .SetImpactParticleReference(magicEffect)
+                                        .AddToDB(),
+                                    0))
+                            .Build())
+                    .Build())
+                .AddToDB();
+
+            power.GuiPresentation.hidden = true;
+            powersChromaticInfusion.Add(power);
+
+            // use same loop to create Reactive Resistance conditions
+            var damageTypeAb = damageType.Replace("Damage", string.Empty);
+
+            var condition = ConditionDefinitionBuilder
+                .Create($"Condition{Name}{damageType}")
+                .SetGuiPresentation($"Power{Name}ReactiveResistance", Category.Feature,
+                    ConditionDefinitions.ConditionProtectedInsideMagicCircle, hidden: true)
+                .SetPossessive()
+                .SetFeatures(dbDamageAffinities.GetElement($"DamageAffinity{damageTypeAb}Resistance"))
+                .SetSpecialInterruptions(ConditionInterruption.AnyBattleTurnEnd)
+                .AddToDB();
+
+            condition.GuiPresentation.description = Gui.NoLocalization;
+        }
+
+        PowerBundle.RegisterPowerBundle(powerChromaticInfusion, false, powersChromaticInfusion);
+
+        // Reactive Resistance
+
+        var powerReactiveResistance = FeatureDefinitionPowerBuilder
+            .Create($"Power{Name}ReactiveResistance")
+            .SetGuiPresentation(Category.Feature, hidden: true)
+            .SetUsesProficiencyBonus(ActivationTime.NoCost)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetCasterEffectParameters(PowerDispelEvilBreakEnchantment)
+                    .Build())
+            .AddToDB();
+
+        powerReactiveResistance.AddCustomSubFeatures(new CustomBehaviorReactiveResistance(powerReactiveResistance));
+
+        return FeatDefinitionBuilder
+            .Create($"Feat{Name}")
+            .SetGuiPresentation(Category.Feat)
+            .SetFeatures(powerChromaticInfusion, powerReactiveResistance)
+            .AddFeatures(powersChromaticInfusion.OfType<FeatureDefinition>().ToArray())
+            .AddToDB();
+    }
+
+    private sealed class CustomBehaviorReactiveResistance(FeatureDefinitionPower powerReactiveResistance)
+        : IPhysicalAttackBeforeHitConfirmedOnMe, IMagicEffectBeforeHitConfirmedOnMe
+    {
+        private static readonly HashSet<string> DamageTypes =
+            [DamageTypeAcid, DamageTypeCold, DamageTypeFire, DamageTypeLightning, DamageTypePoison];
+
+        public IEnumerator OnMagicEffectBeforeHitConfirmedOnMe(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            ActionModifier actionModifier,
+            RulesetEffect rulesetEffect,
+            List<EffectForm> actualEffectForms,
+            bool firstTarget,
+            bool criticalHit)
+        {
+            yield return HandleReaction(battleManager, attacker, defender, actualEffectForms);
+        }
+
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnMe(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            ActionModifier actionModifier,
+            RulesetAttackMode attackMode,
+            bool rangedAttack,
+            AdvantageType advantageType,
+            List<EffectForm> actualEffectForms,
+            bool firstTarget,
+            bool criticalHit)
+        {
+            yield return HandleReaction(battleManager, attacker, defender, actualEffectForms);
+        }
+
+        private IEnumerator HandleReaction(
+            GameLocationBattleManager battleManager,
+            GameLocationCharacter attacker,
+            GameLocationCharacter defender,
+            // ReSharper disable once ParameterTypeCanBeEnumerable.Local
+            List<EffectForm> actualEffectForms)
+        {
+            var gameLocationActionManager =
+                ServiceRepository.GetService<IGameLocationActionService>() as GameLocationActionManager;
+
+            if (battleManager is not { IsBattleInProgress: true } || gameLocationActionManager == null)
+            {
+                yield break;
+            }
+
+            var effectForm = actualEffectForms
+                .FirstOrDefault(x =>
+                    x.FormType == EffectForm.EffectFormType.Damage &&
+                    DamageTypes.Contains(x.DamageForm.DamageType));
+
+            if (effectForm == null)
+            {
+                yield break;
+            }
+
+            var rulesetDefender = defender.RulesetCharacter;
+
+            if (!defender.CanReact() ||
+                rulesetDefender.GetRemainingPowerUses(powerReactiveResistance) == 0)
+            {
+                yield break;
+            }
+
+            var implementationManagerService =
+                ServiceRepository.GetService<IRulesetImplementationService>() as RulesetImplementationManager;
+
+            var damageType = effectForm.DamageForm.DamageType;
+            var damageTitle = Gui.Localize($"Rules/&{damageType}Title");
+            var usablePower = PowerProvider.Get(powerReactiveResistance, rulesetDefender);
+            var reactionParams =
+                new CharacterActionParams(defender, ActionDefinitions.Id.PowerReaction)
+                {
+                    StringParameter = "ReactiveResistance",
+                    StringParameter2 = "UseReactiveResistanceDescription".Formatted(
+                        Category.Reaction, attacker.Name, damageTitle),
+                    ActionModifiers = { new ActionModifier() },
+                    RulesetEffect = implementationManagerService
+                        .MyInstantiateEffectPower(rulesetDefender, usablePower, false),
+                    UsablePower = usablePower,
+                    TargetCharacters = { defender }
+                };
+
+            var count = gameLocationActionManager.PendingReactionRequestGroups.Count;
+
+            gameLocationActionManager.ReactToUsePower(reactionParams, "UsePower", defender);
+
+            yield return battleManager.WaitForReactions(attacker, gameLocationActionManager, count);
+
+            if (!reactionParams.ReactionValidated)
+            {
+                yield break;
+            }
+
+            var conditionName = $"ConditionGiftOfTheChromaticDragon{damageType}";
+
+            rulesetDefender.InflictCondition(
+                conditionName,
+                DurationType.Round,
+                0,
+                TurnOccurenceType.StartOfTurn,
+                AttributeDefinitions.TagEffect,
+                rulesetDefender.guid,
+                rulesetDefender.CurrentFaction.Name,
+                1,
+                conditionName,
+                0,
+                0,
+                0);
+        }
+    }
+
+    #endregion
+
     #region Healer
 
     private static FeatDefinition BuildHealer()
@@ -484,7 +732,7 @@ internal static class OtherFeats
                                 false,
                                 HealingCap.MaximumHitPoints)
                             .Build())
-                    .SetParticleEffectParameters(SpellDefinitions.MagicWeapon)
+                    .SetParticleEffectParameters(MagicWeapon)
                     .Build())
             .AddToDB();
 
@@ -504,14 +752,13 @@ internal static class OtherFeats
                         TargetFilteringTag.No,
                         5,
                         DieType.D8)
-                    .SetDurationData(DurationType.Permanent)
                     .SetRequiredCondition(ConditionDefinitions.ConditionDead)
                     .SetEffectForms(
                         EffectFormBuilder
                             .Create()
                             .SetReviveForm(12, ReviveHitPoints.One)
                             .Build())
-                    .SetParticleEffectParameters(SpellDefinitions.MagicWeapon)
+                    .SetParticleEffectParameters(MagicWeapon)
                     .Build())
             .AddToDB();
 
@@ -520,7 +767,7 @@ internal static class OtherFeats
             .Create("PowerFeatHealerStabilize")
             .SetGuiPresentation(Category.Feature, spriteStabilize)
             .SetUsesAbilityBonus(ActivationTime.Action, RechargeRate.LongRest, AttributeDefinitions.Wisdom)
-            .SetEffectDescription(SpellDefinitions.SpareTheDying.EffectDescription)
+            .SetEffectDescription(SpareTheDying.EffectDescription)
             .AddToDB();
 
         var proficiencyFeatHealerMedicine = FeatureDefinitionProficiencyBuilder
@@ -1027,9 +1274,11 @@ internal static class OtherFeats
         var spellSniperFeats = new List<FeatDefinition>();
         var castSpells = new List<FeatureDefinitionCastSpell>
         {
-            // CastSpellBard, // Bard doesn't have any cantrips in Solasta that are RangeHit
-            // CastSpellCleric, // Cleric doesn't have any cantrips in Solasta that are RangeHit
-            CastSpellDruid, CastSpellSorcerer, CastSpellWarlock, CastSpellWizard
+            CastSpellDruid,
+            CastSpellSorcerer,
+            CastSpellWarlock,
+            CastSpellWizard,
+            InventorClass.SpellCasting
         };
 
         // ReSharper disable once ForeachCanBeConvertedToQueryUsingAnotherGetEnumerator
@@ -1037,8 +1286,10 @@ internal static class OtherFeats
         {
             var spellSniperSpells = castSpell.SpellListDefinition.SpellsByLevel
                 .SelectMany(x => x.Spells)
-                .Where(x => x.SpellLevel == 0 && x.EffectDescription.RangeType is RangeType.RangeHit &&
-                            x.EffectDescription.HasDamageForm())
+                .Where(x =>
+                    x.SpellLevel == 0 &&
+                    x.EffectDescription.RangeType is RangeType.MeleeHit or RangeType.RangeHit &&
+                    x.EffectDescription.HasDamageForm())
                 .ToArray();
 
             if (spellSniperSpells.Length == 0)
@@ -1119,7 +1370,7 @@ internal static class OtherFeats
             EffectDescription effectDescription)
         {
             return definition is SpellDefinition &&
-                   effectDescription.rangeType == RangeType.RangeHit &&
+                   effectDescription.rangeType is RangeType.MeleeHit or RangeType.RangeHit &&
                    effectDescription.HasDamageForm();
         }
 
@@ -1133,6 +1384,75 @@ internal static class OtherFeats
 
             return effectDescription;
         }
+    }
+
+    #endregion
+
+    #region Fighting Initiate
+
+    private static FeatDefinitionWithPrerequisites BuildFeatFromFightingStyle(string fightingStyleName)
+    {
+        var db = DatabaseRepository.GetDatabase<FightingStyleDefinition>();
+        var feat = BuildFightingStyleFeat(db.GetElement(fightingStyleName));
+
+        feat.Validators.Clear();
+        feat.familyTag = string.Empty;
+        feat.hasFamilyTag = false;
+
+        return feat;
+    }
+
+    private static FeatDefinition BuildFightingInitiate()
+    {
+        var fightingStyleFeats = DatabaseRepository
+            .GetDatabase<FightingStyleDefinition>()
+            .Where(x => x.Name is not (
+                MonkShieldExpert.ShieldExpertName or
+                PolearmExpert.PolearmExpertName or
+                Sentinel.SentinelName))
+            .Select(BuildFightingStyleFeat)
+            .OfType<FeatDefinition>()
+            .ToList();
+
+        var vanillaFightingStyleFeats =
+            fightingStyleFeats.Where(x => x.ContentPack != CeContentPackContext.CeContentPack).ToArray();
+
+        GroupFeats.FeatGroupFightingStyle.AddFeats(vanillaFightingStyleFeats);
+
+        return GroupFeats.FeatGroupFightingStyle;
+    }
+
+    private static FeatDefinitionWithPrerequisites BuildFightingStyleFeat(FightingStyleDefinition fightingStyle)
+    {
+        // we need a brand new one to avoid issues with FS getting hidden
+        var guiPresentation = new GuiPresentation(fightingStyle.GuiPresentation);
+        var feat = FeatDefinitionWithPrerequisitesBuilder
+            .Create($"Feat{fightingStyle.Name}")
+            .SetGuiPresentation(guiPresentation)
+            .SetFeatures(
+                FeatureDefinitionProficiencyBuilder
+                    .Create($"ProficiencyFeat{fightingStyle.Name}")
+                    .SetProficiencies(ProficiencyType.FightingStyle, fightingStyle.Name)
+                    .SetGuiPresentation(guiPresentation)
+                    .AddToDB())
+            .SetFeatFamily(GroupFeats.FightingStyle)
+            .SetValidators(ValidatorsFeat.ValidateNotFightingStyle(fightingStyle))
+            .AddToDB();
+
+        // supports custom pools [only superior technique now]
+        feat.Features.AddRange(fightingStyle.Features.OfType<FeatureDefinitionCustomInvocationPool>());
+
+        if (fightingStyle.ContentPack == CeContentPackContext.CeContentPack &&
+            !Main.Settings.FightingStyleEnabled.Contains(fightingStyle.Name))
+        {
+            guiPresentation.hidden = true;
+        }
+        else
+        {
+            feat.contentPack = GamingPlatformDefinitions.ContentPack.BaseGame;
+        }
+
+        return feat;
     }
 
     #endregion

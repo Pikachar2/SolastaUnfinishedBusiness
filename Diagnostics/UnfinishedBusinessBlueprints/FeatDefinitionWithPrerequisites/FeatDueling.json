@@ -8,15 +8,15 @@
   "minimalAbilityScoreName": "Strength",
   "armorProficiencyPrerequisite": false,
   "armorProficiencyCategory": "",
-  "hasFamilyTag": false,
-  "familyTag": "",
+  "hasFamilyTag": true,
+  "familyTag": "FightingStyle",
   "knownFeatsPrerequisite": [],
   "features": [
     "Definition:ProficiencyFeatDueling:9ccff74d-63fa-516b-82fa-0ef819671fcb"
   ],
   "guiPresentation": {
     "$type": "GuiPresentation, Assembly-CSharp",
-    "hidden": true,
+    "hidden": false,
     "title": "FightingStyle/&DuelingTitle",
     "description": "FightingStyle/&DuelingDescription",
     "spriteReference": {
@@ -39,6 +39,6 @@
   },
   "contentCopyright": "UserContent",
   "guid": "16bf67fc-0afc-5eac-954f-d15574176e85",
-  "contentPack": 9999,
+  "contentPack": "BaseGame",
   "name": "FeatDueling"
 }

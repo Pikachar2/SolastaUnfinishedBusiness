@@ -72,7 +72,7 @@ public sealed class RoguishOpportunist : AbstractSubclass
 
         powerDebilitatingStrike.AddCustomSubFeatures(
             ModifyPowerVisibility.Hidden,
-            new AttackBeforeHitConfirmedOnEnemyDebilitatingStrike(powerDebilitatingStrike));
+            new PhysicalAttackBeforeHitConfirmedOnEnemyDebilitatingStrike(powerDebilitatingStrike));
 
         // Opportunity
 
@@ -206,10 +206,10 @@ public sealed class RoguishOpportunist : AbstractSubclass
     // Debilitating Strike
     //
 
-    private sealed class AttackBeforeHitConfirmedOnEnemyDebilitatingStrike(
-        FeatureDefinitionPower powerDebilitatingStrike) : IAttackBeforeHitConfirmedOnEnemy
+    private sealed class PhysicalAttackBeforeHitConfirmedOnEnemyDebilitatingStrike(
+        FeatureDefinitionPower powerDebilitatingStrike) : IPhysicalAttackBeforeHitConfirmedOnEnemy
     {
-        public IEnumerator OnAttackBeforeHitConfirmedOnEnemy(
+        public IEnumerator OnPhysicalAttackBeforeHitConfirmedOnEnemy(
             GameLocationBattleManager battleManager,
             GameLocationCharacter attacker,
             GameLocationCharacter defender,
@@ -218,7 +218,6 @@ public sealed class RoguishOpportunist : AbstractSubclass
             bool rangedAttack,
             AdvantageType advantageType,
             List<EffectForm> actualEffectForms,
-            RulesetEffect rulesetEffect,
             bool firstTarget,
             bool criticalHit)
         {
@@ -358,7 +357,7 @@ public sealed class RoguishOpportunist : AbstractSubclass
 
             gameLocationActionManager.ReactForOpportunityAttack(reactionParams);
 
-            yield return battleManager.WaitForReactions(helper, gameLocationActionManager, count);
+            yield return battleManager.WaitForReactions(attacker, gameLocationActionManager, count);
         }
     }
 }

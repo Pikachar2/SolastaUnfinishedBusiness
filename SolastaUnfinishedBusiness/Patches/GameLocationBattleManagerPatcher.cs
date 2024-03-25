@@ -154,6 +154,63 @@ public static class GameLocationBattleManagerPatcher
         }
     }
 
+    // useful to debug powers that start automatically on rage
+#if false
+    [HarmonyPatch(typeof(GameLocationBattleManager), nameof(GameLocationBattleManager.HandleReactionToRageStart))]
+    [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
+    [UsedImplicitly]
+    public static class HandleReactionToRageStart_Patch
+    {
+        [UsedImplicitly]
+        public static IEnumerator Postfix(
+            IEnumerator values,
+            GameLocationBattleManager __instance,
+            GameLocationCharacter rager)
+        {
+            var actionService = ServiceRepository.GetService<IGameLocationActionService>();
+            var implementationService = ServiceRepository.GetService<IRulesetImplementationService>();
+
+            rager.RulesetCharacter.EnumerateFeaturesToBrowse<FeatureDefinitionPower>(
+                rager.RulesetCharacter.FeaturesToBrowse);
+            
+            foreach (var usablePower in rager.RulesetCharacter.UsablePowers)
+            {
+                if (rager.RulesetCharacter.GetRemainingUsesOfPower(usablePower) > 0 &&
+                    usablePower.PowerDefinition.ActivationTime == ActivationTime.OnRageStartAutomatic)
+                {
+                    var characterActionParams = new CharacterActionParams(rager, ActionDefinitions.Id.SpendPower)
+                    {
+                        StringParameter = usablePower.PowerDefinition.Name,
+                        RulesetEffect = implementationService
+                            .InstantiateEffectPower(rager.RulesetCharacter, usablePower, false),
+                        TargetCharacters = { rager }
+                    };
+
+                    actionService.ExecuteAction(characterActionParams, null, true);
+                }
+                else if (rager.RulesetCharacter.GetRemainingUsesOfPower(usablePower) > 0 &&
+                         usablePower.PowerDefinition.ActivationTime == ActivationTime.OnRageStartChoice)
+                {
+                    var reactionParams = new CharacterActionParams(rager, ActionDefinitions.Id.SpendPower)
+                    {
+                        StringParameter = usablePower.PowerDefinition.Name,
+                        RulesetEffect = implementationService
+                            .InstantiateEffectPower(rager.RulesetCharacter, usablePower, false),
+                        TargetCharacters = { rager },
+                        IsReactionEffect = true
+                    };
+
+                    var count = actionService.PendingReactionRequestGroups.Count;
+
+                    actionService.ReactToSpendPower(reactionParams);
+
+                    yield return __instance.WaitForReactions(rager, actionService, count);
+                }
+            }
+        }
+    }
+#endif
+
     [HarmonyPatch(typeof(GameLocationBattleManager), nameof(GameLocationBattleManager.HandleCharacterMoveStart))]
     [SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase", Justification = "Patch")]
     [UsedImplicitly]
@@ -255,58 +312,35 @@ public static class GameLocationBattleManagerPatcher
             bool criticalHit,
             bool firstTarget)
         {
-            //PATCH: support for `IAttackBeforeHitConfirmedOnEnemy`
+            if (rulesetEffect != null)
+            {
+                while (values.MoveNext())
+                {
+                    yield return values.Current;
+                }
+
+                yield break;
+            }
+
+            //PATCH: support for `IPhysicalAttackBeforeHitConfirmedOnEnemy`
             // should also happen outside battles
-            if (attacker.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
+            foreach (var attackBeforeHitConfirmedOnEnemy in attacker.RulesetCharacter
+                         .GetSubFeaturesByType<IPhysicalAttackBeforeHitConfirmedOnEnemy>())
             {
-                foreach (var attackBeforeHitConfirmedOnEnemy in attacker.RulesetCharacter
-                             .GetSubFeaturesByType<IAttackBeforeHitConfirmedOnEnemy>())
-                {
-                    yield return attackBeforeHitConfirmedOnEnemy.OnAttackBeforeHitConfirmedOnEnemy(
-                        __instance, attacker, defender, attackModifier, attackMode,
-                        rangedAttack, advantageType, actualEffectForms, rulesetEffect, firstTarget, criticalHit);
-                }
+                yield return attackBeforeHitConfirmedOnEnemy.OnPhysicalAttackBeforeHitConfirmedOnEnemy(
+                    __instance, attacker, defender, attackModifier, attackMode,
+                    rangedAttack, advantageType, actualEffectForms, firstTarget, criticalHit);
             }
 
-            // supports REACTION spells on defender
-            if (__instance.Battle != null && defender.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
-            {
-                foreach (var attackBeforeHitConfirmedOnMe in defender.RulesetCharacter.usableSpells
-                             .Where(usableSpell =>
-                                 usableSpell.ActivationTime == ActivationTime.Reaction)
-                             .SelectMany(x => x.GetAllSubFeaturesOfType<IAttackBeforeHitConfirmedOnMe>())
-                             .ToList())
-                {
-                    yield return attackBeforeHitConfirmedOnMe.OnAttackBeforeHitConfirmedOnMe(
-                        __instance, attacker, defender, attackModifier, attackMode,
-                        rangedAttack, advantageType, actualEffectForms, rulesetEffect, firstTarget, criticalHit);
-                }
-            }
-
-            //PATCH: support for `IAttackBeforeHitConfirmedOnMe`
-            if (__instance.Battle != null && defender.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
-            {
-                foreach (var attackBeforeHitConfirmedOnMe in defender.RulesetCharacter
-                             .GetSubFeaturesByType<IAttackBeforeHitConfirmedOnMe>())
-                {
-                    yield return attackBeforeHitConfirmedOnMe.OnAttackBeforeHitConfirmedOnMe(
-                        __instance, attacker, defender, attackModifier, attackMode,
-                        rangedAttack, advantageType, actualEffectForms, rulesetEffect, firstTarget, criticalHit);
-                }
-            }
-
-            //PATCH: support for `IAttackBeforeHitConfirmedOnMeOrAlly`
+            //PATCH: support for `IPhysicalAttackBeforeHitConfirmedOnMe`
             if (__instance.Battle != null)
             {
-                foreach (var ally in __instance.Battle.GetContenders(attacker))
+                foreach (var attackBeforeHitConfirmedOnMe in defender.RulesetCharacter
+                             .GetSubFeaturesByType<IPhysicalAttackBeforeHitConfirmedOnMe>())
                 {
-                    foreach (var attackBeforeHitConfirmedOnMeOrAlly in ally.RulesetCharacter
-                                 .GetSubFeaturesByType<IAttackBeforeHitConfirmedOnMeOrAlly>())
-                    {
-                        yield return attackBeforeHitConfirmedOnMeOrAlly.OnAttackBeforeHitConfirmedOnMeOrAlly(
-                            __instance, attacker, defender, ally, attackModifier, attackMode,
-                            rangedAttack, advantageType, actualEffectForms, rulesetEffect, firstTarget, criticalHit);
-                    }
+                    yield return attackBeforeHitConfirmedOnMe.OnPhysicalAttackBeforeHitConfirmedOnMe(
+                        __instance, attacker, defender, attackModifier, attackMode,
+                        rangedAttack, advantageType, actualEffectForms, firstTarget, criticalHit);
                 }
             }
 
@@ -314,35 +348,6 @@ public static class GameLocationBattleManagerPatcher
             {
                 yield return values.Current;
             }
-
-            var rulesetDefender = defender.RulesetCharacter;
-
-            //PATCH: process ExtraConditionInterruption.AttackedNotBySource
-            if (rulesetDefender == null || rulesetDefender.matchingInterruption)
-            {
-                yield break;
-            }
-
-            rulesetDefender.matchingInterruption = true;
-            rulesetDefender.matchingInterruptionConditions.Clear();
-
-            foreach (var rulesetCondition in rulesetDefender.conditionsByCategory
-                         .SelectMany(keyValuePair => keyValuePair.Value
-                             .Where(rulesetCondition =>
-                                 rulesetCondition.ConditionDefinition.HasSpecialInterruptionOfType(
-                                     (ConditionInterruption)ExtraConditionInterruption.AttackedNotBySource) &&
-                                 rulesetCondition.SourceGuid != attacker.Guid)))
-            {
-                rulesetDefender.matchingInterruptionConditions.Add(rulesetCondition);
-            }
-
-            for (var index = rulesetDefender.matchingInterruptionConditions.Count - 1; index >= 0; --index)
-            {
-                rulesetDefender.RemoveCondition(rulesetDefender.matchingInterruptionConditions[index]);
-            }
-
-            rulesetDefender.matchingInterruptionConditions.Clear();
-            rulesetDefender.matchingInterruption = false;
         }
     }
 
@@ -504,7 +509,7 @@ public static class GameLocationBattleManagerPatcher
 
                         actionService.ReactToSpendSpellSlot(reactionParams);
 
-                        yield return __instance.WaitForReactions(defender, actionService, previousReactionCount);
+                        yield return __instance.WaitForReactions(attacker, actionService, previousReactionCount);
 
                         if (!reactionParams.ReactionValidated)
                         {
@@ -715,7 +720,7 @@ public static class GameLocationBattleManagerPatcher
             bool firstTarget,
             bool criticalHit)
         {
-            //PATCH: support for `IMagicalAttackBeforeHitConfirmedOnEnemy`
+            //PATCH: support for `IMagicEffectBeforeHitConfirmedOnEnemy`
             // should also happen outside battles
             if (attacker.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
             {
@@ -723,7 +728,8 @@ public static class GameLocationBattleManagerPatcher
                              .GetSubFeaturesByType<IMagicEffectBeforeHitConfirmedOnEnemy>())
                 {
                     yield return magicalAttackBeforeHitConfirmedOnEnemy.OnMagicEffectBeforeHitConfirmedOnEnemy(
-                        attacker, defender, magicModifier, rulesetEffect, actualEffectForms, firstTarget, criticalHit);
+                        __instance, attacker, defender, magicModifier, rulesetEffect, actualEffectForms,
+                        firstTarget, criticalHit);
                 }
 
                 if (rulesetEffect is { SourceDefinition: SpellDefinition spellDefinition })
@@ -757,11 +763,12 @@ public static class GameLocationBattleManagerPatcher
                         spellDefinition.GetFirstSubFeatureOfType<IMagicEffectBeforeHitConfirmedOnEnemy>();
 
                     yield return magicalAttackBeforeHitConfirmedOnEnemy?.OnMagicEffectBeforeHitConfirmedOnEnemy(
-                        attacker, defender, magicModifier, rulesetEffect, actualEffectForms, firstTarget, criticalHit);
+                        __instance, attacker, defender, magicModifier, rulesetEffect, actualEffectForms,
+                        firstTarget, criticalHit);
                 }
             }
 
-            // supports REACTION spells on defender
+            //PATCH: support for `IMagicEffectBeforeHitConfirmedOnMe` on SPELLS
             // should also happen outside battles
             if (defender.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
             {
@@ -772,11 +779,12 @@ public static class GameLocationBattleManagerPatcher
                              .ToList())
                 {
                     yield return magicalAttackBeforeHitConfirmedOnMe.OnMagicEffectBeforeHitConfirmedOnMe(
-                        attacker, defender, magicModifier, rulesetEffect, actualEffectForms, firstTarget, criticalHit);
+                        __instance, attacker, defender, magicModifier, rulesetEffect, actualEffectForms,
+                        firstTarget, criticalHit);
                 }
             }
 
-            //PATCH: support for `IMagicalAttackBeforeHitConfirmedOnMe`
+            //PATCH: support for `IMagicEffectBeforeHitConfirmedOnMe`
             // should also happen outside battles
             if (defender.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false })
             {
@@ -784,32 +792,10 @@ public static class GameLocationBattleManagerPatcher
                              .GetSubFeaturesByType<IMagicEffectBeforeHitConfirmedOnMe>())
                 {
                     yield return magicalAttackBeforeHitConfirmedOnMe.OnMagicEffectBeforeHitConfirmedOnMe(
-                        attacker, defender, magicModifier, rulesetEffect, actualEffectForms, firstTarget, criticalHit);
+                        __instance, attacker, defender, magicModifier, rulesetEffect, actualEffectForms,
+                        firstTarget, criticalHit);
                 }
             }
-
-            //PATCH: support for `IMagicalAttackBeforeHitConfirmedOnMeOrAlly`
-            // should also happen outside battles
-            var locationCharacterService = ServiceRepository.GetService<IGameLocationCharacterService>();
-            var contenders =
-                (Gui.Battle?.AllContenders ??
-                 locationCharacterService.PartyCharacters.Union(locationCharacterService.GuestCharacters))
-                .ToList();
-
-            foreach (var ally in contenders
-                         .Where(x => x.IsOppositeSide(attacker.Side)
-                                     && x.RulesetCharacter is { IsDeadOrDyingOrUnconscious: false }))
-            {
-                foreach (var magicalAttackBeforeHitConfirmedOnMeOrAlly in ally.RulesetCharacter
-                             .GetSubFeaturesByType<IMagicEffectBeforeHitConfirmedOnMeOrAlly>())
-                {
-                    yield return magicalAttackBeforeHitConfirmedOnMeOrAlly
-                        .OnMagicEffectBeforeHitConfirmedOnMeOrAlly(
-                            attacker, defender, ally, magicModifier, rulesetEffect, actualEffectForms, firstTarget,
-                            criticalHit);
-                }
-            }
-
 
             while (values.MoveNext())
             {
@@ -1067,28 +1053,25 @@ public static class GameLocationBattleManagerPatcher
             ActionModifier attackModifier,
             int attackRoll)
         {
-            if (__instance.Battle != null)
-            {
-                //PATCH: Support for features before hit possible, e.g. spiritual shielding
-                foreach (var extraEvents in __instance.Battle.GetContenders(attacker)
-                             .SelectMany(featureOwner => featureOwner.RulesetCharacter
-                                 .GetSubFeaturesByType<IAttackBeforeHitPossibleOnMeOrAlly>()
-                                 .Select(x =>
-                                     x.OnAttackBeforeHitPossibleOnMeOrAlly(
-                                         __instance, attacker, defender, featureOwner, attackModifier, attackMode,
-                                         rulesetEffect, attackRoll))))
-                {
-                    while (extraEvents.MoveNext())
-                    {
-                        yield return extraEvents.Current;
-                    }
-                }
-            }
-
-            // Put reaction request for shield and the like after our modded features for better experience 
             while (values.MoveNext())
             {
                 yield return values.Current;
+            }
+
+            // ReSharper disable once InvertIf
+            if (__instance.Battle != null)
+            {
+                //PATCH: Support for features before hit possible, e.g. spiritual shielding
+                foreach (var contender in __instance.Battle.GetContenders(attacker))
+                {
+                    foreach (var attackBeforeHitPossibleOnMeOrAlly in contender.RulesetCharacter
+                                 .GetSubFeaturesByType<IAttackBeforeHitPossibleOnMeOrAlly>())
+                    {
+                        yield return attackBeforeHitPossibleOnMeOrAlly.OnAttackBeforeHitPossibleOnMeOrAlly(
+                            __instance, attacker, defender, contender, attackModifier, attackMode,
+                            rulesetEffect, attackRoll);
+                    }
+                }
             }
         }
     }

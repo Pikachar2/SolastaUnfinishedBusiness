@@ -54,6 +54,7 @@ internal enum ExtraActionId
     WildlingFeralAgility,
     Withdraw,
     ForcePoweredStrikeToggle,
+    BrutalStrikeToggle,
     PrioritizeAction = 10000
 }
 
@@ -177,7 +178,7 @@ internal enum ExtraSituationalContext
     IsNotConditionSource = 9013,
     WearingNoArmorOrLightArmorWithoutShield = 9014,
     WearingNoArmorOrLightArmorWithTwoHandedQuarterstaff = 9015,
-    IsNotConditionSourceWithSimpleOrMartialWeaponInHands = 9016
+    IsNotConditionSourceNotRanged = 9016
 }
 
 internal enum ExtraTurnOccurenceType

@@ -29,6 +29,7 @@ internal static partial class DatabaseHelper
         internal static ActionDefinition MetamagicToggle { get; } = GetDefinition<ActionDefinition>("MetamagicToggle");
         internal static ActionDefinition Pushed { get; } = GetDefinition<ActionDefinition>("Pushed");
         internal static ActionDefinition RageStart { get; } = GetDefinition<ActionDefinition>("RageStart");
+        internal static ActionDefinition RecklessAttack { get; } = GetDefinition<ActionDefinition>("RecklessAttack");
         internal static ActionDefinition StepBack { get; } = GetDefinition<ActionDefinition>("StepBack");
 
         internal static ActionDefinition StunningStrikeToggle { get; } =
@@ -989,6 +990,9 @@ internal static partial class DatabaseHelper
 
     internal static class FeatureDefinitionAttackModifiers
     {
+        internal static FeatureDefinitionAttackModifier AttackModifierFeatAmbidextrous { get; } =
+            GetDefinition<FeatureDefinitionAttackModifier>("AttackModifierFeatAmbidextrous");
+
         internal static FeatureDefinitionAttackModifier AttackModifierFightingStyleArchery { get; } =
             GetDefinition<FeatureDefinitionAttackModifier>("AttackModifierFightingStyleArchery");
 
@@ -1402,6 +1406,12 @@ internal static partial class DatabaseHelper
         internal static FeatureDefinitionFeatureSet FeatureSetAbilityScoreChoice { get; } =
             GetDefinition<FeatureDefinitionFeatureSet>("FeatureSetAbilityScoreChoice");
 
+        internal static FeatureDefinitionFeatureSet FeatureSetBarbarianBrutalCritical { get; } =
+            GetDefinition<FeatureDefinitionFeatureSet>("FeatureSetBarbarianBrutalCritical");
+
+        internal static FeatureDefinitionFeatureSet FeatureSetBarbarianRage { get; } =
+            GetDefinition<FeatureDefinitionFeatureSet>("FeatureSetBarbarianRage");
+
         internal static FeatureDefinitionFeatureSet FeatureSetDragonbornBreathWeapon { get; } =
             GetDefinition<FeatureDefinitionFeatureSet>("FeatureSetDragonbornBreathWeapon");
 
@@ -1488,6 +1498,9 @@ internal static partial class DatabaseHelper
 
         internal static FeatureDefinitionMagicAffinity MagicAffinityChitinousBoonAdditionalSpellSlot { get; } =
             GetDefinition<FeatureDefinitionMagicAffinity>("MagicAffinityChitinousBoonAdditionalSpellSlot");
+
+        internal static FeatureDefinitionMagicAffinity MagicAffinityConditionShielded { get; } =
+            GetDefinition<FeatureDefinitionMagicAffinity>("MagicAffinityConditionShielded");
 
         internal static FeatureDefinitionMagicAffinity MagicAffinitySpellBladeIntoTheFray { get; } =
             GetDefinition<FeatureDefinitionMagicAffinity>("MagicAffinitySpellBladeIntoTheFray");
@@ -1653,6 +1666,9 @@ internal static partial class DatabaseHelper
 
         internal static FeatureDefinitionPower PowerDefilerMistyFormEscape { get; } =
             GetDefinition<FeatureDefinitionPower>("PowerDefilerMistyFormEscape");
+
+        internal static FeatureDefinitionPower PowerDispelEvilBreakEnchantment { get; } =
+            GetDefinition<FeatureDefinitionPower>("PowerDispelEvilBreakEnchantment");
 
         internal static FeatureDefinitionPower PowerDruidCircleBalanceBalanceOfPower { get; } =
             GetDefinition<FeatureDefinitionPower>("PowerDruidCircleBalanceBalanceOfPower");
