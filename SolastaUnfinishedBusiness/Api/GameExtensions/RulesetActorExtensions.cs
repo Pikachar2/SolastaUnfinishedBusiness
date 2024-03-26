@@ -83,6 +83,12 @@ internal static class RulesetActorExtensions
         list.AddRange(hero.trainedInvocations);
         list.AddRange(hero.trainedFightingStyles);
 
+        foreach(var mm in hero.trainedMetamagicOptions)
+        {
+            if (mm.Name == "MetamagicTransmutedSpell")
+                Console.WriteLine($"CLM {hero.Name} has {mm.Name}");
+        }
+
         return list;
     }
 

@@ -3,14 +3,19 @@ using System.Linq;
 using Mono.CSharp;
 using SolastaUnfinishedBusiness.Api;
 using SolastaUnfinishedBusiness.Api.GameExtensions;
+using SolastaUnfinishedBusiness.Api.Helpers;
 using SolastaUnfinishedBusiness.Behaviors;
+using SolastaUnfinishedBusiness.Behaviors.Specific;
 using SolastaUnfinishedBusiness.Builders;
 using SolastaUnfinishedBusiness.Builders.Features;
+using SolastaUnfinishedBusiness.CustomUI;
 using SolastaUnfinishedBusiness.Interfaces;
+using SolastaUnfinishedBusiness.Models;
 using SolastaUnfinishedBusiness.Validators;
 using UnityEngine;
 using static MetricsDefinitions;
 using static RuleDefinitions;
+using static SolastaUnfinishedBusiness.Api.DatabaseHelper;
 
 namespace SolastaUnfinishedBusiness.Subclasses.Builders;
 
@@ -27,6 +32,7 @@ internal static class MetamagicBuilders
         ("DamageAcid", "Acid"), ("DamageCold", "Cold"), ("DamageFire", "Fire"), 
         ("DamageLightning", "Lightning"), ("DamagePoison", "Poison"), ("DamageThunder", "Thunder")
     ];
+    private static FeatureDefinitionPower TransmutedSpellFeature { get; set; }
 
 
     #region Metamagic Altruistic
@@ -270,15 +276,77 @@ internal static class MetamagicBuilders
     {
         var validator = new ValidateMetamagicApplication(IsMetamagicTransmutedSpellValid);
 
+        //List<BaseDefinition> transmutedItems = buildMetamagicTransmutedSpellItem(validator);
         List<MetamagicOptionDefinition> transmutedItems = buildMetamagicTransmutedSpellItem(validator);
+
+//        BuildBombs();
 
         return MetamagicOptionDefinitionBuilder
             .Create(MetamagicTransmuted)
             .SetGuiPresentation(Category.Feature)
             .SetCost(MetamagicCostMethod.SpellLevel)
+            //            .AddCustomSubFeatures(TransmutedSpellFeature, transmutedItems.ToArray()[0])
+            // This one creates a list of single items for each element
             .AddCustomSubFeatures(new ReplaceMetamagicOption(transmutedItems.ToArray()))
-//            .AddCustomSubFeatures(transmutedItems.ToArray()[0], transmutedItems.ToArray()[1])
+            //            .AddCustomSubFeatures(TransmutedSpellFeature)
+            //            .AddCustomSubFeatures(transmutedItems.ToArray()[0], transmutedItems.ToArray()[1])
             .AddToDB();
+    }
+
+    private static void BuildBombs()
+    {
+        byte[] bytes = System.IO.File.ReadAllBytes("E:\\Repositories\\SolastaUnfinishedBusiness\\SolastaUnfinishedBusiness\\Resources\\Spells\\AcidClaws.png");
+//        BuildFireBombs(deviceDescriptionBuilder);
+
+        TransmutedSpellFeature = FeatureDefinitionPowerBuilder
+            .Create("PowerMetamagicTransmutedSpell")
+            .SetGuiPresentation(Category.Feature
+                ,
+                Sprites.GetSprite("AlchemyBombElement", bytes, 256, 128)
+                //Sprites.GetSprite("AlchemyBombElement", Resources.AlchemyBombElement, 256, 128)
+                )
+            .SetUsesFixed(ActivationTime.NoCost)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Permanent)
+                    .Build())
+            .SetUniqueInstance()
+            .AddToDB();
+
+        PowerBundle.RegisterPowerBundle(TransmutedSpellFeature, true,
+            MakeBombFireDamageToggle()
+        );
+
+/*        return FeatureDefinitionBuilder
+            .Create(MetamagicTransmuted)
+            .SetGuiPresentation(Category.Feature)
+            .AddCustomSubFeatures(new PowerPoolDevice(bombItem, AlchemyPool))
+            .AddToDB();
+*/
+    }
+    private static FeatureDefinitionPower MakeBombFireDamageToggle()
+    {
+        var power = FeatureDefinitionPowerBuilder
+            .Create($"PowerMetamagicTransmutedSpell{DamageTypeFire}")
+            .SetGuiPresentation(Category.Feature)
+            .SetShowCasting(false)
+            .SetUniqueInstance()
+            .SetUsesFixed(ActivationTime.NoCost)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Permanent)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .Build())
+                    .Build())
+            .AddToDB();
+
+        ForceGlobalUniqueEffects.AddToGroup(ForceGlobalUniqueEffects.Group.TransmutedSpell, power);
+
+        return power;
     }
 
     private static List<MetamagicOptionDefinition> buildMetamagicTransmutedSpellItem(ValidateMetamagicApplication validator)
@@ -286,7 +354,7 @@ internal static class MetamagicBuilders
         List<MetamagicOptionDefinition> transmutedSpellList = [];
         foreach ((string damage, string type) in ELEMENTAL_DAMAGE_TYPES) 
         {
-            var transmutedItem = MetamagicOptionDefinitionBuilder
+            MetamagicOptionDefinition transmutedItem = MetamagicOptionDefinitionBuilder
                 .Create($"{MetamagicTransmuted}" + type)
                 .SetGuiPresentation(Category.Feature, hidden: true)
                 .SetCost()

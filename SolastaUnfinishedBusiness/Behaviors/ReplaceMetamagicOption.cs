@@ -20,6 +20,19 @@ public class ReplaceMetamagicOption
     {
         List<MetamagicOptionDefinition> list = null;
         var options = hero.TrainedMetamagicOptions;
+        Console.WriteLine("MetamagicGetOptions - Hero features");
+        Console.WriteLine("MetamagicGetOptions - Hero features cache");
+        foreach (var item in hero.featuresCache)
+        {
+            Console.WriteLine(item);
+        }
+        Console.WriteLine("MetamagicGetOptions - Hero Active features");
+        foreach (var item in hero.activeFeatures)
+        {
+            Console.WriteLine(item);
+        }
+        //        Console.WriteLine(hero.featuresCache.ForEach(string);
+//        characterBuildingManager.GrantFeatures(hero, grantedFeatures, $"02Race{characterLevel}", false);
 
         foreach (var option in options)
         {

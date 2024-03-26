@@ -29,6 +29,7 @@ using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionProfi
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.FeatureDefinitionSenses;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.MorphotypeElementDefinitions;
 using static SolastaUnfinishedBusiness.Api.DatabaseHelper.SpellDefinitions;
+using SolastaUnfinishedBusiness.Behaviors.Specific;
 
 namespace SolastaUnfinishedBusiness.Models;
 
@@ -150,6 +151,23 @@ internal static partial class CharacterContext
         .SetUniqueInstance()
         .AddToDB();
 
+    internal static FeatureDefinitionPower FeatureDefinitionPowerTransmuteSpellChange = FeatureDefinitionPowerBuilder
+    .Create("PowerMetamagicTransmutedSpell")
+    .SetGuiPresentation(Category.Feature, Sprites.GetSprite("AlchemyBombElement", Resources.AlchemyBombElement, 256, 128))
+    .SetUsesFixed(ActivationTime.NoCost)
+    .SetEffectDescription(
+        EffectDescriptionBuilder
+            .Create()
+            .SetDurationData(DurationType.Permanent)
+            .SetEffectForms(
+                EffectFormBuilder
+                    .Create()
+                    .Build()
+            )
+            .Build())
+    .SetUniqueInstance()
+    .AddToDB();
+
     internal static readonly FeatureDefinitionPower PowerTeleportSummon = FeatureDefinitionPowerBuilder
         .Create("PowerTeleportSummon")
         .SetGuiPresentation(Category.Feature, DimensionDoor)
@@ -198,6 +216,8 @@ internal static partial class CharacterContext
                 .SetParticleEffectParameters(PowerDruidCircleBalanceBalanceOfPower)
                 .Build())
         .AddToDB();
+
+
 
     private static int PreviousTotalFeatsGrantedFirstLevel { get; set; } = -1;
     private static bool PreviousAlternateHuman { get; set; }
@@ -253,6 +273,7 @@ internal static partial class CharacterContext
             "Sorcerer", SorcerousDraconicBloodline,
             FeatureSetSorcererDraconicChoice, InvocationPoolSorcererDraconicChoice,
             InvocationPoolTypeCustom.Pools.SorcererDraconicChoice);
+        SwitchTransmuteSpellChange();
     }
 
     private static void AddNameToRace(CharacterRaceDefinition raceDefinition, string gender, string name)
@@ -1138,6 +1159,81 @@ internal static partial class CharacterContext
     {
         return DatabaseRepository.GetDatabase<CharacterRaceDefinition>()
             .Any(crd => crd.SubRaces.Contains(raceDefinition));
+    }
+
+    private static void InitializeTransmuteSpellChange()
+    {
+        PowerBundle.RegisterPowerBundle(FeatureDefinitionPowerTransmuteSpellChange, true,
+            //            BuildAcidBombs(deviceDescriptionBuilder),
+            //            BuildColdBombs(deviceDescriptionBuilder),
+            MakeBombFireDamageToggle(DamageTypeFire),
+            MakeBombFireDamageToggle(DamageTypeCold)
+        //            BuildLightningBombs(deviceDescriptionBuilder),
+        //            BuildPoisonBombs(deviceDescriptionBuilder),
+        //            BuildThunderBombs(deviceDescriptionBuilder)
+        );
+    }
+
+    private static FeatureDefinitionPower MakeBombFireDamageToggle(String damageType)
+    {
+        var power = FeatureDefinitionPowerBuilder
+            .Create($"PowerMetamagicTransmutedSpell{damageType}")
+            .SetGuiPresentation(Category.Feature)
+            .SetShowCasting(false)
+            .SetUniqueInstance()
+            .SetUsesFixed(ActivationTime.NoCost)
+            .SetEffectDescription(
+                EffectDescriptionBuilder
+                    .Create()
+                    .SetDurationData(DurationType.Permanent)
+                    .SetEffectForms(
+                        EffectFormBuilder
+                            .Create()
+                            .SetConditionForm(
+                                ConditionDefinitionBuilder
+                                    .Create($"ConditionMetamagicTransmutedSpell{damageType}")
+                                    .SetGuiPresentationNoContent(true)
+                                    .SetSilent(Silent.WhenAddedOrRemoved)
+                                    .AddToDB(), ConditionForm.ConditionOperation.Add)
+                            .Build())
+                    .Build())
+            .AddToDB();
+
+        ForceGlobalUniqueEffects.AddToGroup(ForceGlobalUniqueEffects.Group.TransmutedSpell, power);
+
+        return power;
+    }
+
+    private static void SwitchTransmuteSpellChange()
+    {
+        InitializeTransmuteSpellChange();
+        var dbCharacterRaceDefinition = DatabaseRepository.GetDatabase<CharacterRaceDefinition>();
+        var subRaces = dbCharacterRaceDefinition
+            .SelectMany(x => x.SubRaces);
+        var races = dbCharacterRaceDefinition
+            .Where(x => !subRaces.Contains(x));
+
+        if (Main.Settings.MetamagicEnabled.Contains("MetamagicTransmutedSpell"))
+        {
+            Console.WriteLine("TransmutedSpell Enabled!");
+            foreach (var characterRaceDefinition in races
+                         .Where(a => !a.FeatureUnlocks.Exists(x =>
+                             x.Level == 1 && x.FeatureDefinition == FeatureDefinitionPowerTransmuteSpellChange)))
+            {
+                characterRaceDefinition.FeatureUnlocks.Add(
+                    new FeatureUnlockByLevel(FeatureDefinitionPowerTransmuteSpellChange, 1));
+            }
+        }
+        else
+        {
+            foreach (var characterRaceDefinition in races
+                         .Where(a => a.FeatureUnlocks.Exists(x =>
+                             x.Level == 1 && x.FeatureDefinition == FeatureDefinitionPowerTransmuteSpellChange)))
+            {
+                characterRaceDefinition.FeatureUnlocks.RemoveAll(x =>
+                    x.Level == 1 && x.FeatureDefinition == FeatureDefinitionPowerTransmuteSpellChange);
+            }
+        }
     }
 
     private sealed class FilterTargetingPositionPowerTeleportSummon : IFilterTargetingPosition
